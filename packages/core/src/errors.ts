@@ -129,3 +129,7 @@ export function handleApiError(error: unknown): void {
   // eslint-disable-next-line no-console
   console.error("API Error:", error);
 }
+
+// ── User-friendly error mapping ─────────────────────────────────────────────
+export { DEFAULT_ERROR_MESSAGES, toUserFriendlyError } from "./core/errors";
+export type { ErrorMessageOverrides, UserFriendlyError } from "./core/errors";

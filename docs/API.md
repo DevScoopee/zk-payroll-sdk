@@ -552,7 +552,7 @@ const proof = await ZKProofGenerator.generateSnarkjsProof(witness, config);
 
 ## Error Handling
 
-All errors are wrapped in `PayrollError`:
+All errors are wrapped in `ZkPayrollError` subclasses:
 
 ```typescript
 import { PayrollError } from "@zk-payroll/sdk";
@@ -565,6 +565,48 @@ try {
   }
 }
 ```
+
+### User-Friendly Error Messages
+
+Use `toUserFriendlyError` to translate raw chain, contract, or SDK errors into clear, human-readable messages while preserving the original diagnostic context:
+
+```typescript
+import { toUserFriendlyError, ContractExecutionError } from "@zk-payroll/sdk";
+
+try {
+  await contract.someMethod();
+} catch (err) {
+  const result = toUserFriendlyError(err);
+
+  // Show to the user
+  console.log(result.friendlyMessage); // "The transaction could not be simulated..."
+
+  // Log for debugging
+  console.error(result.code, result.context);
+}
+```
+
+The return type `UserFriendlyError` provides:
+
+| Field            | Description                                  |
+|------------------|----------------------------------------------|
+| `friendlyMessage`| Human-readable description of the failure    |
+| `code`           | Original error code (`SIMULATION_FAILED`, …) |
+| `context`        | Structured metadata (`transactionId`, …)     |
+| `originalError`  | The raw error for full diagnostics           |
+
+#### Customising Messages
+
+Pass an overrides map to replace default messages for specific error codes:
+
+```typescript
+const result = toUserFriendlyError(err, {
+  SIMULATION_FAILED: "We couldn't verify your transaction. Please try again.",
+  WALLET_SIGNING_REJECTED: "Please approve the signature in your wallet.",
+});
+```
+
+The available error codes are defined in `ContractErrorCode` and `DEFAULT_ERROR_MESSAGES`.
 
 ## See Also
 
