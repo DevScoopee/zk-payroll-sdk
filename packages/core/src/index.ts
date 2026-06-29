@@ -35,6 +35,7 @@ export { DEFAULT_CONFIG } from "./config";
 export * from "./cache";
 export * from "./types";
 export { IdempotencyRegistry, createPaymentIdempotencyKey } from "./core/idempotency";
+export { Semaphore } from "./core/concurrency";
 export * from "./crypto/IProofGenerator";
 export * from "./adapters";
 

@@ -50,4 +50,29 @@ export interface ProofGeneratorConfig {
   zkeyUrl: string;
   /** Optional cache TTL in seconds for downloaded artifacts */
   artifactCacheTTL?: number;
+  /**
+   * Maximum number of concurrent proof generations this generator will run.
+   * Defaults to 1 to keep heavy snarkjs CPU work bounded — increase if your
+   * host has enough cores and memory to safely run multiple `groth16.fullProve`
+   * calls in parallel.
+   *
+   * Same-witness requests are deduplicated regardless of this setting.
+   */
+  maxConcurrency?: number;
+}
+
+/**
+ * Derives a stable cache key from a proof witness.
+ *
+ * BigInt values are stringified so common witness fields (amount, nullifier, etc.)
+ * remain deterministic across runs. Keys are stable between processes, so cache
+ * hits work across SDK restarts.
+ *
+ * Shared between `SnarkjsProofGenerator`, `WorkerProofGenerator`, and the legacy
+ * `ZKProofGenerator` helpers so deduplication semantics stay consistent.
+ */
+export function witnessKey(witness: Record<string, unknown>): string {
+  return `proof:${JSON.stringify(witness, (_, value) =>
+    typeof value === "bigint" ? value.toString() : value
+  )}`;
 }
