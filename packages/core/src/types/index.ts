@@ -1,3 +1,5 @@
+import type { PayrollProgressCallback } from "../progress";
+
 export interface PayrollRecord {
   id: string;
   recipient: string;
@@ -17,6 +19,13 @@ export interface PaymentParams {
   amount: bigint;
   /** Asset identifier (e.g. "native" for XLM or a Soroban token contract ID) */
   asset: string;
+  /**
+   * Optional idempotency key to safely retry the same payment request
+   * without triggering duplicate submissions.
+   */
+  idempotencyKey?: string;
+  /** Optional structured progress handler for validation, proof, and submission preparation. */
+  onProgress?: PayrollProgressCallback;
 }
 
 /**

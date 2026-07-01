@@ -123,31 +123,5 @@ export interface IWalletAdapter {
   onAccountChange(callback: (publicKey: string) => void): () => void;
 }
 
-/**
- * Wallet-specific error
- */
-export class WalletError extends Error {
-  constructor(
-    message: string,
-    public code: string,
-    public walletId: string
-  ) {
-    super(message);
-    this.name = "WalletError";
-  }
-}
-
-/**
- * Wallet error codes
- */
-export const WalletErrorCode = {
-  NOT_INSTALLED: "WALLET_NOT_INSTALLED",
-  NOT_CONNECTED: "WALLET_NOT_CONNECTED",
-  CONNECTION_REJECTED: "WALLET_CONNECTION_REJECTED",
-  SIGNING_REJECTED: "WALLET_SIGNING_REJECTED",
-  NETWORK_MISMATCH: "WALLET_NETWORK_MISMATCH",
-  INVALID_XDR: "WALLET_INVALID_XDR",
-  UNKNOWN_ERROR: "WALLET_UNKNOWN_ERROR",
-} as const;
-
-export type WalletErrorCode = (typeof WalletErrorCode)[keyof typeof WalletErrorCode];
+import { WalletError, WalletErrorCode } from "../errors";
+export { WalletError, WalletErrorCode };

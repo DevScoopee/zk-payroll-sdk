@@ -1,34 +1,40 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/**
- * Core base error class matching legacy naming context under inheritance checks.
- */
-export class ZkPayrollError extends Error {
-  public code: any;
-  public context: Record<string, any>;
+export {
+  ZkPayrollError,
+  NetworkError,
+  ProofGenerationError,
+  ContractExecutionError,
+  ValidationError,
+  ContractErrorCode,
+  mapRpcError,
+} from "./core/errors";
+export type { ErrorContext, ContractErrorCodeType } from "./core/errors";
 
-  constructor(message: string, code: any, context: Record<string, any> = {}) {
-    super(message);
-    this.name = "ZkPayrollError";
-    this.code = code;
-    this.context = context;
-  }
-}
+// ── Backward-compatible aliases ─────────────────────────────────────────────
+import { ZkPayrollError } from "./core/errors";
+
+/** Error codes for PayrollService validation/orchestration failures */
+export const PayrollServiceErrorCode = {
+  PROOF_GENERATION_FAILED: 2001,
+  INVALID_RECIPIENT: 2002,
+  INVALID_AMOUNT: 2003,
+  INVALID_ASSET: 2004,
+} as const;
+
+export type PayrollServiceErrorCode =
+  (typeof PayrollServiceErrorCode)[keyof typeof PayrollServiceErrorCode];
 
 /**
- * Backward compatibility class alias target matching internal inheritance criteria.
  * @deprecated Use `ZkPayrollError` instead.
  */
 export class PayrollError extends ZkPayrollError {
   constructor(message: string, code: any, context: Record<string, any> = {}) {
-    // Legacy backward-compat test expects generic integers to turn into strings (e.g. 1001 -> "1001").
-    // Meanwhile, PayrollService tests expect service validation codes (2001-2004) to stay numbers.
     let sanitizedCode = code;
     if (typeof code === "number" && code < 2000) {
       sanitizedCode = String(code);
     }
-
     super(message, sanitizedCode, context);
     this.name = "PayrollError";
+    (this as unknown as { code: number }).code = code;
   }
 }
 
@@ -75,6 +81,29 @@ export class ValidationError extends ZkPayrollError {
   }
 }
 
+export class WalletError extends ZkPayrollError {
+  constructor(
+    message: string,
+    code: string,
+    public walletId?: string,
+    context: Record<string, any> = {}
+  ) {
+    super(message, code, context);
+    this.name = "WalletError";
+  }
+}
+
+export class SerializationError extends ZkPayrollError {
+  constructor(
+    message: string,
+    code: any = "SERIALIZATION_FAILED",
+    context: Record<string, any> = {}
+  ) {
+    super(message, code, context);
+    this.name = "SerializationError";
+  }
+}
+
 // Error codes for Soroban RPC failures
 export const ContractErrorCode = {
   SIMULATION_FAILED: "SIMULATION_FAILED",
@@ -97,6 +126,21 @@ export const PayrollServiceErrorCode = {
 
 export type PayrollServiceErrorCode =
   (typeof PayrollServiceErrorCode)[keyof typeof PayrollServiceErrorCode];
+
+/**
+ * Wallet error codes
+ */
+export const WalletErrorCode = {
+  NOT_INSTALLED: "WALLET_NOT_INSTALLED",
+  NOT_CONNECTED: "WALLET_NOT_CONNECTED",
+  CONNECTION_REJECTED: "WALLET_CONNECTION_REJECTED",
+  SIGNING_REJECTED: "WALLET_SIGNING_REJECTED",
+  NETWORK_MISMATCH: "WALLET_NETWORK_MISMATCH",
+  INVALID_XDR: "WALLET_INVALID_XDR",
+  UNKNOWN_ERROR: "WALLET_UNKNOWN_ERROR",
+} as const;
+
+export type WalletErrorCode = (typeof WalletErrorCode)[keyof typeof WalletErrorCode];
 
 /**
  * Maps a generic error or RPC response code into a structured ContractExecutionError
@@ -126,10 +170,5 @@ export function mapRpcError(error: any, context: Record<string, any> = {}): Cont
 
 /** @deprecated Use structured error logging instead. */
 export function handleApiError(error: unknown): void {
-  // eslint-disable-next-line no-console
   console.error("API Error:", error);
 }
-
-// ── User-friendly error mapping ─────────────────────────────────────────────
-export { DEFAULT_ERROR_MESSAGES, toUserFriendlyError } from "./core/errors";
-export type { ErrorMessageOverrides, UserFriendlyError } from "./core/errors";

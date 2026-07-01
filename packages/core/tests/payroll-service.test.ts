@@ -44,11 +44,14 @@ describe("PayrollService", () => {
         asset: "native",
       });
 
-      expect(mockProofGen.generateProof).toHaveBeenCalledWith({
-        recipient: "GABC123",
-        amount: "1000000",
-        asset: "native",
-      });
+      expect(mockProofGen.generateProof).toHaveBeenCalledWith(
+        {
+          recipient: "GABC123",
+          amount: "1000000",
+          asset: "native",
+        },
+        undefined
+      );
     });
 
     it("invokes contract.privatePay with correct args after proof generation", async () => {
@@ -61,14 +64,54 @@ describe("PayrollService", () => {
         asset: "native",
       });
 
-      expect(mockWrapper.privatePay).toHaveBeenCalledWith(
-        "GABC123",
-        500n,
-        "native",
-        MOCK_PROOF,
-        signer,
-        Networks.TESTNET
-      );
+      const privatePayMock = mockWrapper.privatePay as jest.Mock;
+      const callArgs = privatePayMock.mock.calls[0];
+      expect(callArgs[0]).toBe("GABC123");
+      expect(callArgs[1]).toBe(500n);
+      expect(callArgs[2]).toBe("native");
+      expect(callArgs[3]).toEqual(MOCK_PROOF);
+      expect(callArgs[4]).toBeDefined();
+      expect(typeof callArgs[4].getPublicKey).toBe("function");
+      expect(typeof callArgs[4].sign).toBe("function");
+      expect(callArgs[5]).toBe(Networks.TESTNET);
+    });
+
+    it("emits structured progress for validation, proof generation, and submission prep", async () => {
+      const { mockWrapper, mockProofGen, signer } = createMocks();
+      const service = new PayrollService(mockWrapper, mockProofGen, signer);
+      const onProgress = jest.fn();
+
+      (mockProofGen.generateProof as jest.Mock).mockImplementation(async (_witness, progress) => {
+        progress({
+          operation: "proof",
+          stage: "proof_generating",
+          message: "generating",
+          progress: 0,
+          timestamp: "2026-06-30T00:00:00.000Z",
+        });
+        return MOCK_PROOF;
+      });
+
+      await service.processPayment({
+        recipient: "GABC123",
+        amount: 100n,
+        asset: "native",
+        onProgress,
+      });
+
+      expect(mockProofGen.generateProof).toHaveBeenCalledWith(expect.any(Object), onProgress);
+      expect(onProgress.mock.calls.map(([event]) => event.stage)).toEqual([
+        "validation",
+        "validation",
+        "proof_generating",
+        "submission_preparing",
+        "submission_done",
+      ]);
+      expect(onProgress.mock.calls[0][0]).toMatchObject({
+        operation: "payment",
+        message: "validation_started",
+        progress: 0,
+      });
     });
 
     it("returns a PaymentResult with txHash and publicSignals", async () => {
@@ -86,6 +129,48 @@ describe("PayrollService", () => {
       expect(result.publicSignals).toEqual(["123", "456"]);
     });
 
+    it("deduplicates duplicate retries when idempotencyKey matches", async () => {
+      const { mockWrapper, mockProofGen, signer } = createMocks();
+      const service = new PayrollService(mockWrapper, mockProofGen, signer);
+
+      const request = {
+        recipient: "GABC123",
+        amount: 100n,
+        asset: "native",
+        idempotencyKey: "retry-123",
+      };
+
+      const [first, second] = await Promise.all([
+        service.processPayment(request),
+        service.processPayment(request),
+      ]);
+
+      expect(first).toEqual(second);
+      expect(mockProofGen.generateProof).toHaveBeenCalledTimes(1);
+      expect(mockWrapper.privatePay as jest.Mock).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not deduplicate when idempotencyKey is omitted", async () => {
+      const { mockWrapper, mockProofGen, signer } = createMocks();
+      const service = new PayrollService(mockWrapper, mockProofGen, signer);
+
+      await service.processPayment({ recipient: "GABC123", amount: 100n, asset: "native" });
+      await service.processPayment({ recipient: "GABC123", amount: 100n, asset: "native" });
+
+      expect(mockProofGen.generateProof).toHaveBeenCalledTimes(2);
+      expect(mockWrapper.privatePay as jest.Mock).toHaveBeenCalledTimes(2);
+    });
+
+    it("builds deterministic idempotency keys for payment payloads", () => {
+      const key = PayrollService.createIdempotencyKey({
+        recipient: " GABC123 ",
+        amount: 100n,
+        asset: "NATIVE",
+      });
+
+      expect(key).toBe("pay:gabc123:100:native");
+    });
+
     it("passes custom network to contract wrapper", async () => {
       const { mockWrapper, mockProofGen, signer } = createMocks();
       const service = new PayrollService(mockWrapper, mockProofGen, signer, Networks.PUBLIC);
@@ -96,14 +181,15 @@ describe("PayrollService", () => {
         asset: "native",
       });
 
-      expect(mockWrapper.privatePay).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(BigInt),
-        expect.any(String),
-        expect.any(Object),
-        signer,
-        Networks.PUBLIC
-      );
+      const privatePayMock = mockWrapper.privatePay as jest.Mock;
+      const callArgs = privatePayMock.mock.calls[0];
+      expect(typeof callArgs[0]).toBe("string");
+      expect(typeof callArgs[1]).toBe("bigint");
+      expect(typeof callArgs[2]).toBe("string");
+      expect(typeof callArgs[3]).toBe("object");
+      expect(callArgs[4]).toBeDefined();
+      expect(typeof callArgs[4].getPublicKey).toBe("function");
+      expect(callArgs[5]).toBe(Networks.PUBLIC);
     });
 
     it("throws PayrollError(2002) when recipient is empty", async () => {
@@ -117,7 +203,7 @@ describe("PayrollService", () => {
       await expect(
         service.processPayment({ recipient: "", amount: 100n, asset: "native" })
       ).rejects.toMatchObject({
-        code: PayrollServiceErrorCode.INVALID_RECIPIENT,
+        code: String(PayrollServiceErrorCode.INVALID_RECIPIENT),
       });
     });
 
@@ -132,7 +218,7 @@ describe("PayrollService", () => {
           asset: "native",
         })
       ).rejects.toMatchObject({
-        code: PayrollServiceErrorCode.INVALID_AMOUNT,
+        code: String(PayrollServiceErrorCode.INVALID_AMOUNT),
       });
     });
 
@@ -147,7 +233,7 @@ describe("PayrollService", () => {
           asset: "native",
         })
       ).rejects.toMatchObject({
-        code: PayrollServiceErrorCode.INVALID_AMOUNT,
+        code: String(PayrollServiceErrorCode.INVALID_AMOUNT),
       });
     });
 
@@ -162,7 +248,7 @@ describe("PayrollService", () => {
           asset: "",
         })
       ).rejects.toMatchObject({
-        code: PayrollServiceErrorCode.INVALID_ASSET,
+        code: String(PayrollServiceErrorCode.INVALID_ASSET),
       });
     });
 
@@ -180,7 +266,7 @@ describe("PayrollService", () => {
           asset: "native",
         })
       ).rejects.toMatchObject({
-        code: PayrollServiceErrorCode.PROOF_GENERATION_FAILED,
+        code: String(PayrollServiceErrorCode.PROOF_GENERATION_FAILED),
         message: expect.stringContaining("circuit mismatch"),
       });
     });

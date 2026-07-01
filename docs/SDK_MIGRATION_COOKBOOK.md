@@ -322,8 +322,7 @@ If you encounter further issues, see the [Contributing Guide](../CONTRIBUTING.md
 
 ## Related Documentation
 
-- **Versioning Policy** — [RELEASE_TEMPLATE.md](../.github/RELEASE_TEMPLATE.md) (SemVer conventions and deprecation rules)
-- **Deprecation Policy** — Embedded in [RELEASE_TEMPLATE.md](../.github/RELEASE_TEMPLATE.md): deprecations announced at least one minor version before removal, with an alternative provided
+- **Versioning Policy** — [VERSIONING.md](./VERSIONING.md) (SemVer conventions, compatibility rules, and deprecation policies)
 - **Changelog** — See [GitHub Releases](https://github.com/zkpayroll/zk-payroll-sdk/releases) (no standalone CHANGELOG file)
 - **API Reference** — [docs/API.md](./API.md) (full class, interface, and method documentation)
 - **ZK Proof Generation** — [docs/ZK_PROOF_GENERATION.md](./ZK_PROOF_GENERATION.md) (includes legacy migration section)
