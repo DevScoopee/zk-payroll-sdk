@@ -73,7 +73,8 @@ export const ContractErrorCode = {
   UNKNOWN_RPC_ERROR: "UNKNOWN_RPC_ERROR",
 } as const;
 
-export type ContractErrorCodeType = (typeof ContractErrorCode)[keyof typeof ContractErrorCode];
+export type ContractErrorCodeType =
+  (typeof ContractErrorCode)[keyof typeof ContractErrorCode];
 
 /**
  * Thrown when a Soroban contract call fails (simulation, submission,
@@ -110,7 +111,10 @@ export class ValidationError extends ZkPayrollError {
 /**
  * Map a raw Soroban RPC error to a typed ContractExecutionError.
  */
-export function mapRpcError(error: unknown, context: ErrorContext = {}): ContractExecutionError {
+export function mapRpcError(
+  error: unknown,
+  context: ErrorContext = {}
+): ContractExecutionError {
   if (error instanceof ContractExecutionError) return error;
 
   const msg = error instanceof Error ? error.message : String(error);

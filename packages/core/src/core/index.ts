@@ -8,6 +8,7 @@ export { RemoteArtifactResolver } from "../crypto/RemoteArtifactResolver";
 export type { RemoteArtifactResolverConfig } from "../crypto/RemoteArtifactResolver";
 export * from "../crypto/ArtifactErrors";
 export * from "./errors";
+export * from "./retry";
 export * from "../cache";
 export * from "./retry";
 export * from "./idempotency";

@@ -2,6 +2,7 @@ import { rpc, xdr, Keypair, StrKey, Account } from "@stellar/stellar-sdk";
 import { TransactionWatcher } from "../src/events";
 import { BaseContractWrapper } from "../src/adapters/BaseContractWrapper";
 import { createFlakyServer } from "../src/testing/FlakyRpcServer";
+import { toISigner } from "../src/signer/KeypairSigner";
 import { ContractErrorCode } from "../src/errors";
 
 // Mock @stellar/stellar-sdk to bypass read-only exports and stub assembleTransaction
@@ -59,7 +60,7 @@ class DummyContractClient extends BaseContractWrapper {
   }
 
   async testInvoke(signer: Keypair): Promise<xdr.ScVal> {
-    return this.invoke("test_method", [], signer);
+    return this.invoke("test_method", [], toISigner(signer));
   }
 }
 

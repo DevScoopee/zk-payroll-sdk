@@ -32,12 +32,7 @@
  * @stellar/stellar-sdk or the Soroban contract interface.
  */
 
-import {
-  xdr,
-  rpc,
-  nativeToScVal,
-  StrKey,
-} from "@stellar/stellar-sdk";
+import { xdr, rpc, nativeToScVal, StrKey } from "@stellar/stellar-sdk";
 import { PayrollContractWrapper } from "../src/adapters/PayrollContractWrapper";
 import { ProofVerifierClient } from "../src/clients/ProofVerifierClient";
 import { SalaryCommitmentClient } from "../src/clients/SalaryCommitmentClient";
@@ -78,48 +73,40 @@ function argsToHex(args: xdr.ScVal[]): string {
   return args.map((a) => scValToHex(a)).join(":");
 }
 
-// ── Testable wrapper subclasses ───────────────────────────────────────────────
-// These expose private encode methods so that snapshot tests can verify the
+// ── Helper functions to access private encode methods ────────────────────────
+// These bypass TypeScript private access so that snapshot tests can verify the
 // serialised output directly without going through the full invoke pipeline.
 
-class TestablePayrollContractWrapper extends PayrollContractWrapper {
-  public encodeProof(proof: ProofPayload): xdr.ScVal {
-    return (this as unknown as { encodeProof(p: ProofPayload): xdr.ScVal })
-      .encodeProof(proof);
-  }
+function callEncodePayrollProof(wrapper: PayrollContractWrapper, proof: ProofPayload): xdr.ScVal {
+  return (wrapper as unknown as { encodeProof(p: ProofPayload): xdr.ScVal }).encodeProof(proof);
+}
+
+function callEncodeProofStruct(
+  client: ProofVerifierClient | SalaryCommitmentClient,
+  proof: ProofStruct
+): xdr.ScVal {
+  return (client as unknown as { encodeProofStruct(p: ProofStruct): xdr.ScVal }).encodeProofStruct(
+    proof
+  );
 }
 
 class TestableProofVerifierClient extends ProofVerifierClient {
-  public encodeProofStruct(proof: ProofStruct): xdr.ScVal {
-    return (
-      this as unknown as { encodeProofStruct(p: ProofStruct): xdr.ScVal }
-    ).encodeProofStruct(proof);
-  }
-
   public encodeVerifyArgs(
     proof: ProofStruct,
     publicInputs: string[],
-    verificationKeyId: number,
+    verificationKeyId: number
   ): xdr.ScVal[] {
-    const proofStructScVal = (
-      this as unknown as { encodeProofStruct(p: ProofStruct): xdr.ScVal }
-    ).encodeProofStruct(proof);
+    const proofStructScVal = callEncodeProofStruct(this, proof);
 
-    return [
-      proofStructScVal,
-      xdr.ScVal.scvVec(
-        publicInputs.map((s) => nativeToScVal(s, { type: "bytes" })),
-      ),
-      nativeToScVal(verificationKeyId, { type: "u32" }),
-    ];
-  }
-}
+    const publicInputsScVal = xdr.ScVal.scvVec(
+      publicInputs.map((s) => {
+        const isHex = /^[0-9a-fA-F]+$/.test(s) && s.length % 2 === 0;
+        const buf = isHex ? Buffer.from(s, "hex") : Buffer.from(s, "utf-8");
+        return nativeToScVal(new Uint8Array(buf), { type: "bytes" });
+      })
+    );
 
-class TestableSalaryCommitmentClient extends SalaryCommitmentClient {
-  public encodeProofStruct(proof: ProofStruct): xdr.ScVal {
-    return (
-      this as unknown as { encodeProofStruct(p: ProofStruct): xdr.ScVal }
-    ).encodeProofStruct(proof);
+    return [proofStructScVal, publicInputsScVal, nativeToScVal(verificationKeyId, { type: "u32" })];
   }
 }
 
@@ -140,8 +127,7 @@ describe("ProofPayload JSON serialisation", () => {
     expect(() => JSON.parse(json)).not.toThrow();
     const parsed = JSON.parse(json);
     expect(parsed).toHaveProperty("proof");
-    expect(parsed).toHaveProperty("publicInputs");
-    expect(parsed).toHaveProperty("verificationKeyId");
+    expect(parsed).toHaveProperty("publicSignals");
   });
 });
 
@@ -150,13 +136,10 @@ describe("ProofPayload JSON serialisation", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("PayrollContractWrapper.encodeProof (ProofPayload → XDR ScVal)", () => {
-  let wrapper: TestablePayrollContractWrapper;
+  let wrapper: PayrollContractWrapper;
 
   beforeAll(() => {
-    wrapper = new TestablePayrollContractWrapper(
-      createMockServer(),
-      TEST_CONTRACT_ID,
-    );
+    wrapper = new PayrollContractWrapper(createMockServer(), TEST_CONTRACT_ID);
   });
 
   const FIXTURES: [string, ProofPayload][] = [
@@ -166,7 +149,7 @@ describe("PayrollContractWrapper.encodeProof (ProofPayload → XDR ScVal)", () =
   ];
 
   it.each(FIXTURES)("produces scVal for %s payload", (_label, payload) => {
-    const scVal = wrapper.encodeProof(payload);
+    const scVal = callEncodePayrollProof(wrapper, payload);
     const hex = scValToHex(scVal);
     expect(hex).toBeTruthy();
     expect(typeof hex).toBe("string");
@@ -179,13 +162,10 @@ describe("PayrollContractWrapper.encodeProof (ProofPayload → XDR ScVal)", () =
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("ProofVerifierClient.encodeProofStruct (ProofStruct → XDR ScVal)", () => {
-  let client: TestableProofVerifierClient;
+  let client: ProofVerifierClient;
 
   beforeAll(() => {
-    client = new TestableProofVerifierClient(
-      createMockServer(),
-      TEST_CONTRACT_ID,
-    );
+    client = new ProofVerifierClient(createMockServer(), TEST_CONTRACT_ID);
   });
 
   const FIXTURES: [string, ProofStruct][] = [
@@ -195,7 +175,7 @@ describe("ProofVerifierClient.encodeProofStruct (ProofStruct → XDR ScVal)", ()
   ];
 
   it.each(FIXTURES)("produces scVal for %s payload", (_label, payload) => {
-    const scVal = client.encodeProofStruct(payload);
+    const scVal = callEncodeProofStruct(client, payload);
     const hex = scValToHex(scVal);
     expect(hex).toBeTruthy();
     expect(typeof hex).toBe("string");
@@ -208,13 +188,10 @@ describe("ProofVerifierClient.encodeProofStruct (ProofStruct → XDR ScVal)", ()
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("SalaryCommitmentClient.encodeProofStruct (ProofStruct → XDR ScVal)", () => {
-  let client: TestableSalaryCommitmentClient;
+  let client: SalaryCommitmentClient;
 
   beforeAll(() => {
-    client = new TestableSalaryCommitmentClient(
-      createMockServer(),
-      TEST_CONTRACT_ID,
-    );
+    client = new SalaryCommitmentClient(createMockServer(), TEST_CONTRACT_ID);
   });
 
   const FIXTURES: [string, ProofStruct][] = [
@@ -224,7 +201,7 @@ describe("SalaryCommitmentClient.encodeProofStruct (ProofStruct → XDR ScVal)",
   ];
 
   it.each(FIXTURES)("produces scVal for %s payload", (_label, payload) => {
-    const scVal = client.encodeProofStruct(payload);
+    const scVal = callEncodeProofStruct(client, payload);
     const hex = scValToHex(scVal);
     expect(hex).toBeTruthy();
     expect(typeof hex).toBe("string");
@@ -240,10 +217,7 @@ describe("ProofVerifierClient.verify argument encoding", () => {
   let client: TestableProofVerifierClient;
 
   beforeAll(() => {
-    client = new TestableProofVerifierClient(
-      createMockServer(),
-      TEST_CONTRACT_ID,
-    );
+    client = new TestableProofVerifierClient(createMockServer(), TEST_CONTRACT_ID);
   });
 
   const FIXTURES: [string, VerifyProofRequest][] = [
@@ -253,11 +227,7 @@ describe("ProofVerifierClient.verify argument encoding", () => {
   ];
 
   it.each(FIXTURES)("produces valid args for %s request", (_label, req) => {
-    const args = client.encodeVerifyArgs(
-      req.proof,
-      req.publicInputs,
-      req.verificationKeyId,
-    );
+    const args = client.encodeVerifyArgs(req.proof, req.publicInputs, req.verificationKeyId);
     const hex = argsToHex(args);
     expect(hex).toBeTruthy();
     expect(typeof hex).toBe("string");
@@ -272,29 +242,29 @@ describe("ProofVerifierClient.verify argument encoding", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("XDR round-trip (hex → ScVal)", () => {
-  let payrollWrapper: TestablePayrollContractWrapper;
-  let verifierClient: TestableProofVerifierClient;
+  let payrollWrapper: PayrollContractWrapper;
+  let verifierClient: ProofVerifierClient;
 
   beforeAll(() => {
     const server = createMockServer();
-    payrollWrapper = new TestablePayrollContractWrapper(server, TEST_CONTRACT_ID);
-    verifierClient = new TestableProofVerifierClient(server, TEST_CONTRACT_ID);
+    payrollWrapper = new PayrollContractWrapper(server, TEST_CONTRACT_ID);
+    verifierClient = new ProofVerifierClient(server, TEST_CONTRACT_ID);
   });
 
   it("ProofPayload XDR can be decoded back without error", () => {
-    const scVal = payrollWrapper.encodeProof(PROOF_PAYLOAD_NORMAL);
+    const scVal = callEncodePayrollProof(payrollWrapper, PROOF_PAYLOAD_NORMAL);
     const hex = scValToHex(scVal);
     expect(() => xdr.ScVal.fromXDR(hex, "hex")).not.toThrow();
   });
 
   it("ProofStruct XDR can be decoded back without error", () => {
-    const scVal = verifierClient.encodeProofStruct(PROOF_STRUCT_NORMAL);
+    const scVal = callEncodeProofStruct(verifierClient, PROOF_STRUCT_NORMAL);
     const hex = scValToHex(scVal);
     expect(() => xdr.ScVal.fromXDR(hex, "hex")).not.toThrow();
   });
 
   it("round-tripped ScVal hex equals original", () => {
-    const scVal = payrollWrapper.encodeProof(PROOF_PAYLOAD_NORMAL);
+    const scVal = callEncodePayrollProof(payrollWrapper, PROOF_PAYLOAD_NORMAL);
     const hex = scValToHex(scVal);
     const decoded = xdr.ScVal.fromXDR(hex, "hex");
     expect(scValToHex(decoded)).toBe(hex);
