@@ -579,7 +579,7 @@ const proof = await ZKProofGenerator.generateSnarkjsProof(witness, config);
 
 ## Error Handling
 
-All errors are wrapped in `PayrollError`:
+All errors are wrapped in `ZkPayrollError` subclasses:
 
 ```typescript
 import { PayrollError } from "@zk-payroll/sdk";
