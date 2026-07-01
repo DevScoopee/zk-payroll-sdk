@@ -86,3 +86,6 @@ export * from "./filters";
 
 // ── Redaction Utilities ─────────────────────────────────────────────────────
 export * from "./redaction";
+
+// ── Multi-Asset Metadata ────────────────────────────────────────────────────
+export * from "./assets";

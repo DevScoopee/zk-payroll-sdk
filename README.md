@@ -315,6 +315,34 @@ Each `DiagnosticEntry` contains:
 - `error?: Error` - The caught error object, if any.
 - `details?: Record<string, unknown>` - Extra context (e.g. network passphrases or RPC response details).
 
+## Multi-Asset Support
+
+The SDK provides a centralised `AssetRegistry` that maps asset identifiers to labels,
+decimal precision, and display behaviour. Applications can extend it with any custom
+Soroban token.
+
+```typescript
+import { AssetRegistry, formatAmount, parseAmount } from "@zk-payroll/sdk";
+
+// Use a built-in asset (native XLM, USDC, EUROC ship pre-registered)
+const xlm = AssetRegistry.getOrThrow("native");
+formatAmount(10_000_000n, xlm); // "1.0000000 XLM"
+
+// Register a custom Soroban token
+AssetRegistry.register({
+  id: "CTOKEN_CORP123",
+  symbol: "CORP",
+  label: "Corp Company Token",
+  decimals: 7,
+});
+
+const corp = AssetRegistry.getOrThrow("CTOKEN_CORP123");
+parseAmount("500.00 CORP", corp); // 3_500_000_000n
+```
+
+See the [Multi-Asset Guide](./docs/MULTI_ASSET.md) for the full API reference, isolation
+patterns for tests, and rules for extending the registry in production.
+
 ## Documentation
 
 - [Runtime Support Matrix](./docs/SUPPORT_MATRIX.md) - Supported Node.js and browser versions
