@@ -317,6 +317,7 @@ Each `DiagnosticEntry` contains:
 
 ## Documentation
 
+- [Runtime Support Matrix](./docs/SUPPORT_MATRIX.md) - Supported Node.js and browser versions
 - [API Reference](./docs/API.md) - Complete API documentation
 - [Error Handling](./docs/ERRORS.md) - Public error hierarchy and recovery patterns
 - [ZK Proof Generation](./docs/ZK_PROOF_GENERATION.md) - Detailed proof generation guide
