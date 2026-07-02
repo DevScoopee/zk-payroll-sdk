@@ -34,7 +34,7 @@ describe("ISigner implementations", () => {
     it("WalletSigner satisfies the ISigner interface", () => {
       const signer = new WalletSigner(
         async () => "GABCDEF1234567890",
-        async (_txXdr: string) => _txXdr,
+        async (_txXdr: string) => _txXdr
       );
 
       expect(signer).toHaveProperty("getPublicKey");
@@ -63,7 +63,7 @@ describe("ISigner implementations", () => {
     it("accepts WalletSigner where ISigner is expected", () => {
       const signer: ISigner = new WalletSigner(
         async () => "G...",
-        async (_txXdr: string) => _txXdr,
+        async (_txXdr: string) => _txXdr
       );
       expect(signer).toBeInstanceOf(WalletSigner);
     });
@@ -81,7 +81,7 @@ describe("ISigner implementations", () => {
     it("WalletSigner delegates to the injected function", async () => {
       const signer = new WalletSigner(
         async () => "GABCWALLETKEY",
-        async (_txXdr: string) => _txXdr,
+        async (_txXdr: string) => _txXdr
       );
 
       const pk = await signer.getPublicKey();
@@ -107,7 +107,7 @@ describe("KeypairSigner", () => {
     } as unknown as Transaction;
 
     const result = await signer.sign(mockTx);
-    expect((mockTx as any).sign).toHaveBeenCalledWith(kp);
+    expect((mockTx as unknown as { sign: jest.Mock }).sign).toHaveBeenCalledWith(kp);
     expect(result).toBe(mockTx);
   });
 
@@ -124,21 +124,19 @@ describe("KeypairSigner", () => {
 describe("WalletSigner", () => {
   it("delegates signing to the injected function", async () => {
     const mockSignedTx = {} as Transaction;
-    const fromXDRSpy = jest.spyOn(TransactionBuilder, "fromXDR").mockReturnValue(mockSignedTx as any);
+    const fromXDRSpy = jest.spyOn(TransactionBuilder, "fromXDR").mockReturnValue(mockSignedTx);
 
     const signTx = jest.fn().mockResolvedValue("signed-xdr");
-    const signer = new WalletSigner(
-      async () => "G...",
-      signTx,
-      { networkPassphrase: Networks.TESTNET },
-    );
+    const signer = new WalletSigner(async () => "G...", signTx, {
+      networkPassphrase: Networks.TESTNET,
+    });
 
     const mockTx = {
       toXDR: jest.fn().mockReturnValue("unsigned-xdr"),
     } as unknown as Transaction;
 
     const result = await signer.sign(mockTx);
-    expect((mockTx as any).toXDR).toHaveBeenCalled();
+    expect((mockTx as unknown as { toXDR: jest.Mock }).toXDR).toHaveBeenCalled();
     expect(signTx).toHaveBeenCalledWith("unsigned-xdr");
     expect(fromXDRSpy).toHaveBeenCalledWith("signed-xdr", Networks.TESTNET);
     expect(result).toBe(mockSignedTx);
@@ -149,7 +147,7 @@ describe("WalletSigner", () => {
   it("uses TESTNET network passphrase by default", () => {
     const signer = new WalletSigner(
       async () => "G...",
-      async (_txXdr: string) => _txXdr,
+      async (_txXdr: string) => _txXdr
     );
 
     expect(signer).toBeDefined();
@@ -159,7 +157,7 @@ describe("WalletSigner", () => {
     const signer = new WalletSigner(
       async () => "G...",
       async (_txXdr: string) => _txXdr,
-      { networkPassphrase: Networks.PUBLIC },
+      { networkPassphrase: Networks.PUBLIC }
     );
 
     expect(signer).toBeDefined();
@@ -175,7 +173,10 @@ describe("isISigner", () => {
   });
 
   it("returns true for WalletSigner", () => {
-    const signer = new WalletSigner(async () => "G...", async (_txXdr: string) => _txXdr);
+    const signer = new WalletSigner(
+      async () => "G...",
+      async (_txXdr: string) => _txXdr
+    );
     expect(isISigner(signer)).toBe(true);
   });
 

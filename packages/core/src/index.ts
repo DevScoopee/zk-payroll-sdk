@@ -14,11 +14,7 @@ export { PayrollContract } from "./contract";
 export { ZKProofGenerator } from "./crypto/proofs";
 export { SnarkjsProofGenerator } from "./crypto/SnarkjsProofGenerator";
 export { WorkerProofGenerator } from "./crypto/WorkerProofGenerator";
-export type {
-  WorkerLike,
-  WorkerProofOptions,
-  ProofProgressCallback,
-} from "./crypto/WorkerProofGenerator";
+export type { WorkerLike, WorkerProofOptions } from "./crypto/WorkerProofGenerator";
 export type { WorkerRequest, WorkerResponse, ProofProgressStage } from "./crypto/WorkerMessages";
 export {
   ZkPayrollError,
@@ -34,6 +30,7 @@ export type { ErrorContext, ContractErrorCodeType } from "./errors";
 export { DEFAULT_CONFIG } from "./config";
 export * from "./cache";
 export * from "./types";
+export * from "./progress";
 export { IdempotencyRegistry, createPaymentIdempotencyKey } from "./core/idempotency";
 export * from "./crypto/IProofGenerator";
 export * from "./adapters";
@@ -53,6 +50,28 @@ export * from "./testing";
 export { TransactionWatcher } from "./events";
 export type { ConfirmationOptions, ConfirmationResult } from "./events";
 
+// ── Pagination Helpers ───────────────────────────────────────────────────────
+export * from "./pagination";
+
+// ── Event Stream Parser ──────────────────────────────────────────────────────
+export {
+  parseContractEvent,
+  parseContractEvents,
+  EventParsingError,
+} from "./event-parser";
+export type {
+  RawContractEvent,
+  TypedContractEvent,
+  RegisteredEvent,
+  RegistryUpdatedEvent,
+  RegistryDeactivatedEvent,
+  CommittedEvent,
+  SalaryRevealedEvent,
+  PaymentExecutedEvent,
+  PaymentScheduledEvent,
+  PaymentCancelledEvent,
+} from "./event-parser";
+
 // ── Typed Contract Clients ───────────────────────────────────────────────────
 export * from "./clients";
 
@@ -70,3 +89,6 @@ export * from "./filters";
 
 // ── Redaction Utilities ─────────────────────────────────────────────────────
 export * from "./redaction";
+
+// ── Multi-Asset Metadata ────────────────────────────────────────────────────
+export * from "./assets";

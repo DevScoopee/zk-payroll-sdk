@@ -6,6 +6,7 @@ import {
   ValidationError,
   ContractErrorCode,
   mapRpcError,
+  toUserFriendlyError,
 } from "../src/errors";
 import { PayrollError } from "../src/errors";
 
@@ -171,6 +172,148 @@ describe("Core Error Classes", () => {
     it("keeps name as PayrollError", () => {
       const error = new PayrollError("test", 500);
       expect(error.name).toBe("PayrollError");
+    });
+  });
+
+  describe("toUserFriendlyError", () => {
+    it("maps SIMULATION_FAILED to a simulation-friendly message", () => {
+      const err = new ContractExecutionError(
+        "simulate failed",
+        ContractErrorCode.SIMULATION_FAILED,
+        { transactionId: "tx_sim" }
+      );
+      const result = toUserFriendlyError(err);
+      expect(result.friendlyMessage).toMatch(/simulat/i);
+      expect(result.code).toBe(ContractErrorCode.SIMULATION_FAILED);
+    });
+
+    it("maps TRANSACTION_SUBMISSION_FAILED to a submission-friendly message", () => {
+      const err = new ContractExecutionError(
+        "submit failed",
+        ContractErrorCode.TRANSACTION_SUBMISSION_FAILED
+      );
+      const result = toUserFriendlyError(err);
+      expect(result.friendlyMessage).toMatch(/rejected|submission|network/i);
+      expect(result.code).toBe(ContractErrorCode.TRANSACTION_SUBMISSION_FAILED);
+    });
+
+    it("maps TRANSACTION_TIMEOUT to a timeout-friendly message", () => {
+      const err = new ContractExecutionError("timed out", ContractErrorCode.TRANSACTION_TIMEOUT);
+      const result = toUserFriendlyError(err);
+      expect(result.friendlyMessage).toMatch(/time|congested/i);
+      expect(result.code).toBe(ContractErrorCode.TRANSACTION_TIMEOUT);
+    });
+
+    it("maps INSUFFICIENT_FEE to a fee-friendly message", () => {
+      const err = new ContractExecutionError("fee too low", ContractErrorCode.INSUFFICIENT_FEE);
+      const result = toUserFriendlyError(err);
+      expect(result.friendlyMessage).toMatch(/fee/i);
+      expect(result.code).toBe(ContractErrorCode.INSUFFICIENT_FEE);
+    });
+
+    it("maps CONTRACT_REVERT to a revert-friendly message", () => {
+      const err = new ContractExecutionError(
+        "contract reverted",
+        ContractErrorCode.CONTRACT_REVERT
+      );
+      const result = toUserFriendlyError(err);
+      expect(result.friendlyMessage).toMatch(/reject|contract/i);
+      expect(result.code).toBe(ContractErrorCode.CONTRACT_REVERT);
+    });
+
+    it("maps UNKNOWN_RPC_ERROR to a generic message", () => {
+      const err = new ContractExecutionError("weird error");
+      const result = toUserFriendlyError(err);
+      expect(result.friendlyMessage).toMatch(/unexpected|error/i);
+      expect(result.code).toBe("UNKNOWN_RPC_ERROR");
+    });
+
+    it("maps NetworkError to a network-friendly message", () => {
+      const err = new NetworkError("connection refused");
+      const result = toUserFriendlyError(err);
+      expect(result.friendlyMessage).toMatch(/network/i);
+      expect(result.code).toBe("NETWORK_ERROR");
+    });
+
+    it("maps ProofGenerationError to a proof-friendly message", () => {
+      const err = new ProofGenerationError("circuit crashed");
+      const result = toUserFriendlyError(err);
+      expect(result.friendlyMessage).toMatch(/proof/i);
+      expect(result.code).toBe("PROOF_GENERATION_FAILED");
+    });
+
+    it("maps ValidationError to a validation-friendly message", () => {
+      const err = new ValidationError("bad input", "amount");
+      const result = toUserFriendlyError(err);
+      expect(result.friendlyMessage).toMatch(/validat/i);
+      expect(result.code).toBe("VALIDATION_ERROR");
+    });
+
+    it("maps WalletError-like objects via duck-typing", () => {
+      const walletErr = {
+        name: "WalletError",
+        message: "User rejected signing",
+        code: "WALLET_SIGNING_REJECTED",
+        walletId: "freighter",
+      };
+      const result = toUserFriendlyError(walletErr);
+      expect(result.friendlyMessage).toMatch(/signing|rejected/i);
+      expect(result.code).toBe("WALLET_SIGNING_REJECTED");
+      expect(result.context.walletId).toBe("freighter");
+    });
+
+    it("maps a plain Error with UNKNOWN_RPC_ERROR code", () => {
+      const result = toUserFriendlyError(new Error("something broke"));
+      expect(result.friendlyMessage).toMatch(/unexpected|error/i);
+      expect(result.code).toBe("UNKNOWN_RPC_ERROR");
+      expect(result.context).toEqual({});
+    });
+
+    it("maps a string value gracefully", () => {
+      const result = toUserFriendlyError("raw string error");
+      expect(result.friendlyMessage).toMatch(/unexpected|error/i);
+      expect(result.code).toBe("UNKNOWN_RPC_ERROR");
+    });
+
+    it("preserves original error in result", () => {
+      const original = new ContractExecutionError("test");
+      const result = toUserFriendlyError(original);
+      expect(result.originalError).toBe(original);
+    });
+
+    it("preserves context metadata", () => {
+      const ctx = { transactionId: "tx_abc", contractId: "C_123", network: "testnet" };
+      const err = new ContractExecutionError("fail", ContractErrorCode.SIMULATION_FAILED, ctx);
+      const result = toUserFriendlyError(err);
+      expect(result.context).toEqual(ctx);
+    });
+
+    it("accepts custom message overrides", () => {
+      const err = new ContractExecutionError("sim fail", ContractErrorCode.SIMULATION_FAILED);
+      const overrides = {
+        SIMULATION_FAILED: "Custom simulation message for the user.",
+      };
+      const result = toUserFriendlyError(err, overrides);
+      expect(result.friendlyMessage).toBe(overrides.SIMULATION_FAILED);
+    });
+
+    it("uses default message for unrecognized codes when no override", () => {
+      const err = { code: "SOME_WEIRD_CODE", context: {}, message: "weird" };
+      const result = toUserFriendlyError(err);
+      expect(result.friendlyMessage).toMatch(/unexpected|error/i);
+    });
+
+    it("uses override for unrecognized codes when provided", () => {
+      const err = { code: "SOME_WEIRD_CODE", context: {}, message: "weird" };
+      const overrides = { SOME_WEIRD_CODE: "Handled with custom message." };
+      const result = toUserFriendlyError(err, overrides);
+      expect(result.friendlyMessage).toBe(overrides.SOME_WEIRD_CODE);
+    });
+
+    it("falls back to hardcoded message when even the default map is missing", () => {
+      const unknown = { code: "NO_SUCH_CODE", context: {} };
+      const result = toUserFriendlyError(unknown);
+      expect(result.friendlyMessage).toBeTruthy();
     });
   });
 });
