@@ -1,23 +1,42 @@
-/**
- * Interface for zero-knowledge proof generation.
- * Implementations should handle circuit-specific witness preparation
- * and proof generation using the appropriate proving system.
- */
+import type { PayrollProgressCallback } from "../progress";
+
 export interface IProofGenerator {
-  /**
-   * Generates a zero-knowledge proof for the given witness data.
-   *
-   * @param witness - Circuit-specific input data (e.g., recipient, amount, nullifier)
-   * @returns Promise resolving to the proof payload ready for contract verification
-   */
-  generateProof(witness: Record<string, unknown>): Promise<ProofPayload>;
+  generateProof(
+    witness: Record<string, unknown>,
+    onProgress?: PayrollProgressCallback
+  ): Promise<ProofPayload>;
+}
+
+/** Status returned by preload() and getPreloadStatus(). */
+export interface PreloadStatus {
+  /** Whether the .wasm circuit file has been loaded into memory. */
+  wasmLoaded: boolean;
+  /** Whether the .zkey proving-key file has been loaded into memory. */
+  zkeyLoaded: boolean;
+  /** ISO timestamp of when preloading completed, if it has. */
+  completedAt?: string;
 }
 
 /**
- * Structured proof payload compatible with Solidity/Soroban verifiers.
+ * Extended interface for proof generators that support artifact preloading.
+ * Preloading downloads and caches circuit artifacts before proof generation
+ * is needed, eliminating first-run latency.
  */
+export interface IPreloadableProofGenerator extends IProofGenerator {
+  /**
+   * Preloads circuit artifacts (.wasm and .zkey) into memory.
+   * Subsequent calls to generateProof() reuse the cached artifacts.
+   *
+   * @returns Status indicating which artifacts were loaded.
+   */
+  preload(): Promise<PreloadStatus>;
+
+  /** Returns the current preload status without triggering a download. */
+  getPreloadStatus(): PreloadStatus;
+}
+
+/** Structured proof payload compatible with Solidity/Soroban verifiers. */
 export interface ProofPayload {
-  /** Proof components (pi_a, pi_b, pi_c for Groth16) */
   proof: {
     pi_a: [string, string];
     pi_b: [[string, string], [string, string]];
@@ -25,18 +44,55 @@ export interface ProofPayload {
     protocol: string;
     curve: string;
   };
-  /** Public signals/inputs to the circuit */
   publicSignals: string[];
 }
 
-/**
- * Configuration for proof generation artifacts.
- */
+/** Configuration for proof generation artifacts. */
 export interface ProofGeneratorConfig {
-  /** URL or path to the circuit .wasm file */
+  /**
+   * URL or path to the circuit .wasm file.
+   *
+   * Accepts HTTP(S) URLs for remote fetching, or local filesystem paths
+   * (absolute, relative, or `file://` URIs) for offline resolution.
+   *
+   * When {@link wasmSource} is set, this field is ignored.
+   */
   wasmUrl: string;
-  /** URL or path to the proving key .zkey file */
+  /**
+   * URL or path to the proving key .zkey file.
+   *
+   * Accepts HTTP(S) URLs for remote fetching, or local filesystem paths
+   * (absolute, relative, or `file://` URIs) for offline resolution.
+   *
+   * When {@link zkeySource} is set, this field is ignored.
+   */
   zkeyUrl: string;
+  /**
+   * Typed artifact source for the .wasm file.
+   * When set, this takes precedence over {@link wasmUrl}.
+   *
+   * @example
+   * ```typescript
+   * // Local file
+   * wasmSource: { type: "local", path: "./circuits/payroll.wasm" }
+   * // Remote URL
+   * wasmSource: { type: "remote", url: "https://cdn.example.com/payroll.wasm" }
+   * ```
+   */
+  wasmSource?: import("./IArtifactResolver").ArtifactSource;
+  /**
+   * Typed artifact source for the .zkey file.
+   * When set, this takes precedence over {@link zkeyUrl}.
+   *
+   * @example
+   * ```typescript
+   * // Local file
+   * zkeySource: { type: "local", path: "./circuits/payroll.zkey" }
+   * // Remote URL
+   * zkeySource: { type: "remote", url: "https://cdn.example.com/payroll.zkey" }
+   * ```
+   */
+  zkeySource?: import("./IArtifactResolver").ArtifactSource;
   /** Optional cache TTL in seconds for downloaded artifacts */
   artifactCacheTTL?: number;
 }

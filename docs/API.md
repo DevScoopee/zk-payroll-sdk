@@ -2,6 +2,304 @@
 
 ## Classes
 
+## Idempotent payroll retries
+
+Use `idempotencyKey` when submitting payroll payments so client-side retries do not create duplicate submissions.
+
+```typescript
+import { PayrollService, createPaymentIdempotencyKey } from "@zk-payroll/sdk";
+
+const key = createPaymentIdempotencyKey({
+  recipient: "G...",
+  amount: 1000n,
+  asset: "native",
+});
+
+const result = await service.processPayment({
+  recipient: "G...",
+  amount: 1000n,
+  asset: "native",
+  idempotencyKey: key,
+});
+```
+
+### Recommendation
+
+- Generate one idempotency key per user intent (for example, button click / request ID)
+- Reuse the same key for retries of that same intent
+- Use a new key for genuinely new payment requests
+
+### Typed Contract Clients
+
+The SDK provides fully typed client wrappers for the core ZK Payroll Soroban contracts. Each client extends `BaseContractWrapper` and handles XDR encoding/decoding automatically.
+
+### `PayrollRegistryClient`
+
+Typed client for the `payroll_registry` contract. Manages employer-employee payroll relationships.
+
+#### `constructor(server: rpc.Server, contractId: string, options?: ClientOptions)`
+
+| Param | Type | Description |
+|---|---|---|
+| `server` | `rpc.Server` | Soroban RPC server instance |
+| `contractId` | `string` | Deployed contract address |
+| `options.networkPassphrase` | `string` | Network passphrase (default: `Networks.TESTNET`) |
+
+#### `register(request: RegisterRequest, signer: Keypair, network?: string): Promise<void>`
+
+Registers a new payroll relationship.
+
+```typescript
+interface RegisterRequest {
+  employer: string;   // Stellar address
+  employee: string;   // Stellar address
+  salary: bigint;     // Amount in stroops
+  token: string;      // Token contract address
+  metadata?: string;  // Optional description
+}
+```
+
+#### `getRegistry(employer: string, employee: string, signer: Keypair, network?: string): Promise<RegistryEntry>`
+
+Returns the payroll registry entry for an employer-employee pair.
+
+```typescript
+interface RegistryEntry {
+  employer: string;
+  employee: string;
+  salary: bigint;
+  token: string;
+  metadata: string;
+  active: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+```
+
+#### `updateRegistry(request: UpdateRegistryRequest, signer: Keypair, network?: string): Promise<void>`
+
+Updates the salary for an existing registry entry.
+
+```typescript
+interface UpdateRegistryRequest {
+  employer: string;
+  employee: string;
+  salary: bigint;
+}
+```
+
+#### `deactivateRegistry(employer: string, employee: string, signer: Keypair, network?: string): Promise<void>`
+
+Deactivates a payroll registry entry.
+
+#### `getEmployeeCount(employer: string, signer: Keypair, network?: string): Promise<number>`
+
+Returns the number of employees registered under an employer.
+
+#### `getEmployees(employer: string, start: number, limit: number, signer: Keypair, network?: string): Promise<string[]>`
+
+Returns a paginated list of employee addresses for an employer.
+
+#### `registryExists(employer: string, employee: string, signer: Keypair, network?: string): Promise<boolean>`
+
+Checks if a registry entry exists for the given employer-employee pair.
+
+---
+
+### `SalaryCommitmentClient`
+
+Typed client for the `salary_commitment` contract. Handles salary commitments with ZK proof verification.
+
+#### `constructor(server: rpc.Server, contractId: string, options?: ClientOptions)`
+
+Same constructor pattern as `PayrollRegistryClient`.
+
+#### `commit(request: CommitRequest, signer: Keypair, network?: string): Promise<void>`
+
+Commits to a salary amount for a specific pay cycle using a hash.
+
+```typescript
+interface CommitRequest {
+  employer: string;
+  employee: string;
+  commitmentHash: string;  // Hex-encoded hash
+  cycleId: bigint;
+}
+```
+
+#### `getCommitment(employer: string, employee: string, cycleId: bigint, signer: Keypair, network?: string): Promise<CommitmentEntry>`
+
+Returns the salary commitment for a specific cycle.
+
+```typescript
+interface CommitmentEntry {
+  employer: string;
+  employee: string;
+  commitmentHash: string;
+  cycleId: bigint;
+  createdAt: number;
+  revealed: boolean;
+  actualAmount: bigint;
+}
+```
+
+#### `batchCommit(employer: string, commitments: BatchCommitItem[], signer: Keypair, network?: string): Promise<void>`
+
+Commits multiple salaries in a single transaction.
+
+```typescript
+interface BatchCommitItem {
+  employee: string;
+  commitmentHash: string;
+  cycleId: bigint;
+}
+```
+
+#### `verifyCommitment(employer: string, employee: string, cycleId: bigint, proof: ProofStruct, signer: Keypair, network?: string): Promise<boolean>`
+
+Verifies a salary commitment against a ZK proof.
+
+#### `revealSalary(employer: string, employee: string, cycleId: bigint, actualAmount: bigint, signer: Keypair, network?: string): Promise<void>`
+
+Reveals the actual salary for a previously committed cycle.
+
+#### `getCommitmentCount(employer: string, employee: string, signer: Keypair, network?: string): Promise<number>`
+
+Returns the number of commitment cycles for an employer-employee pair.
+
+---
+
+### `ProofVerifierClient`
+
+Typed client for the `proof_verifier` contract. Manages ZK proof verification and verification keys.
+
+#### `constructor(server: rpc.Server, contractId: string, options?: ClientOptions)`
+
+Same constructor pattern.
+
+#### `verify(proof: ProofStruct, publicInputs: string[], verificationKeyId: number, signer: Keypair, network?: string): Promise<boolean>`
+
+Verifies a ZK proof against a verification key.
+
+```typescript
+interface ProofStruct {
+  pi_a: [string, string];
+  pi_b: [[string, string], [string, string]];
+  pi_c: [string, string];
+  publicSignals: string[];
+}
+```
+
+#### `addVerificationKey(vk: string, description: string, signer: Keypair, network?: string): Promise<number>`
+
+Adds a new verification key and returns its ID.
+
+#### `getVerificationKey(id: number, signer: Keypair, network?: string): Promise<string>`
+
+Returns the raw verification key bytes as hex.
+
+#### `setActiveVerificationKey(id: number, signer: Keypair, network?: string): Promise<void>`
+
+Sets the active verification key by ID.
+
+#### `getActiveVerificationKeyId(signer: Keypair, network?: string): Promise<number>`
+
+Returns the ID of the currently active verification key.
+
+#### `getVerificationKeyCount(signer: Keypair, network?: string): Promise<number>`
+
+Returns the total number of verification keys stored.
+
+#### `getVerificationKeyInfo(id: number, signer: Keypair, network?: string): Promise<VerificationKeyInfo>`
+
+Returns metadata for a verification key.
+
+```typescript
+interface VerificationKeyInfo {
+  id: number;
+  description: string;
+  key: string;  // Hex-encoded
+}
+```
+
+---
+
+### `PaymentExecutorClient`
+
+Typed client for the `payment_executor` contract. Handles executing and scheduling payments.
+
+#### `constructor(server: rpc.Server, contractId: string, options?: ClientOptions)`
+
+Same constructor pattern.
+
+#### `execute(request: ExecutePaymentRequest, signer: Keypair, network?: string): Promise<ExecutePaymentResponse>`
+
+Executes an immediate payment.
+
+```typescript
+interface ExecutePaymentRequest {
+  recipient: string;
+  amount: bigint;
+  asset: string;
+  memo?: string;
+}
+
+interface ExecutePaymentResponse {
+  txHash: string;
+}
+```
+
+#### `schedule(request: SchedulePaymentRequest, signer: Keypair, network?: string): Promise<SchedulePaymentResponse>`
+
+Schedules a future payment.
+
+```typescript
+interface SchedulePaymentRequest {
+  recipient: string;
+  amount: bigint;
+  asset: string;
+  executeAt: number;   // Unix timestamp
+  memo?: string;
+}
+
+interface SchedulePaymentResponse {
+  paymentId: bigint;
+}
+```
+
+#### `cancel(paymentId: bigint, signer: Keypair, network?: string): Promise<void>`
+
+Cancels a scheduled payment.
+
+#### `getScheduledPayment(paymentId: bigint, signer: Keypair, network?: string): Promise<ScheduledPayment>`
+
+Returns details of a scheduled payment.
+
+```typescript
+interface ScheduledPayment {
+  id: bigint;
+  employer: string;
+  recipient: string;
+  amount: bigint;
+  asset: string;
+  executeAt: number;
+  memo: string;
+  executed: boolean;
+  cancelled: boolean;
+  createdAt: number;
+}
+```
+
+#### `getPendingPayments(employer: string, start: bigint, limit: number, signer: Keypair, network?: string): Promise<ScheduledPayment[]>`
+
+Returns a paginated list of pending (non-executed, non-cancelled) payments for an employer.
+
+#### `getPaymentCount(employer: string, signer: Keypair, network?: string): Promise<number>`
+
+Returns the total number of payments scheduled by an employer.
+
+---
+
 ### `PayrollService`
 
 Main entry point for payroll operations.
@@ -106,6 +404,129 @@ Creates a new localStorage cache with optional key prefix.
 
 ## Usage Examples
 
+### Typed Client — PayrollRegistryClient
+
+```typescript
+import { rpc, Keypair } from "@stellar/stellar-sdk";
+import { PayrollRegistryClient } from "@zk-payroll/sdk";
+
+const server = new rpc.Server("https://soroban-testnet.stellar.org");
+const signer = Keypair.fromSecret("S...");
+
+const registry = new PayrollRegistryClient(server, "CCONTRACT_ID...");
+
+// Register a new employee
+await registry.register({
+  employer: "GEMPLOYER...",
+  employee: "GEMPLOYEE...",
+  salary: 1000n,
+  token: "CTOKEN...",
+  metadata: "engineering",
+}, signer);
+
+// Query
+const entry = await registry.getRegistry("GEMPLOYER...", "GEMPLOYEE...", signer);
+console.log(entry.active, entry.salary);
+
+// Update salary
+await registry.updateRegistry({
+  employer: "GEMPLOYER...",
+  employee: "GEMPLOYEE...",
+  salary: 2000n,
+}, signer);
+
+// Paginated employee list
+const employees = await registry.getEmployees("GEMPLOYER...", 0, 10, signer);
+
+// Deactivate
+await registry.deactivateRegistry("GEMPLOYER...", "GEMPLOYEE...", signer);
+```
+
+### Typed Client — SalaryCommitmentClient
+
+```typescript
+import { SalaryCommitmentClient } from "@zk-payroll/sdk";
+
+const client = new SalaryCommitmentClient(server, "CCONTRACT_ID...");
+
+// Commit to a salary
+await client.commit({
+  employer: "GEMPLOYER...",
+  employee: "GEMPLOYEE...",
+  commitmentHash: "deadbeef...",
+  cycleId: 1n,
+}, signer);
+
+// Retrieve commitment
+const commitment = await client.getCommitment("GEMPLOYER...", "GEMPLOYEE...", 1n, signer);
+
+// Batch commit
+await client.batchCommit("GEMPLOYER...", [
+  { employee: "G1...", commitmentHash: "abcd", cycleId: 1n },
+  { employee: "G2...", commitmentHash: "ef01", cycleId: 1n },
+], signer);
+
+// Reveal salary
+await client.revealSalary("GEMPLOYER...", "GEMPLOYEE...", 1n, 1500n, signer);
+```
+
+### Typed Client — ProofVerifierClient
+
+```typescript
+import { ProofVerifierClient } from "@zk-payroll/sdk";
+
+const client = new ProofVerifierClient(server, "CCONTRACT_ID...");
+
+// Verify a proof
+const valid = await client.verify(
+  { pi_a: ["1","2"], pi_b: [["3","4"],["5","6"]], pi_c: ["7","8"], publicSignals: ["sig"] },
+  ["public_input"],
+  1,  // verification key ID
+  signer
+);
+
+// Add verification key
+const vkId = await client.addVerificationKey("aabbccdd...", "groth16 bn128", signer);
+
+// Query key info
+const info = await client.getVerificationKeyInfo(vkId, signer);
+
+// Set as active
+await client.setActiveVerificationKey(vkId, signer);
+```
+
+### Typed Client — PaymentExecutorClient
+
+```typescript
+import { PaymentExecutorClient } from "@zk-payroll/sdk";
+
+const client = new PaymentExecutorClient(server, "CCONTRACT_ID...");
+
+// Execute immediate payment
+const execResult = await client.execute({
+  recipient: "GPAYEE...",
+  amount: 1000n,
+  asset: "CNATIVE...",
+  memo: "monthly salary",
+}, signer);
+console.log("TxHash:", execResult.txHash);
+
+// Schedule payment
+const scheduleResult = await client.schedule({
+  recipient: "GPAYEE...",
+  amount: 500n,
+  asset: "CNATIVE...",
+  executeAt: Math.floor(Date.now() / 1000) + 86400,
+  memo: "bonus",
+}, signer);
+
+// Cancel scheduled payment
+await client.cancel(scheduleResult.paymentId, signer);
+
+// List pending payments
+const pending = await client.getPendingPayments("GEMPLOYER...", 0n, 20, signer);
+```
+
 ### Basic Proof Generation
 
 ```typescript
@@ -158,7 +579,7 @@ const proof = await ZKProofGenerator.generateSnarkjsProof(witness, config);
 
 ## Error Handling
 
-All errors are wrapped in `PayrollError`:
+All errors are wrapped in `ZkPayrollError` subclasses:
 
 ```typescript
 import { PayrollError } from "@zk-payroll/sdk";
@@ -171,6 +592,156 @@ try {
   }
 }
 ```
+
+## Contract Metadata Discovery
+
+The SDK provides helpers for discovering and validating deployed contract metadata across common Stellar environments, reducing manual wiring when connecting to testnet, mainnet, or local standalone networks.
+
+### `getContractMetadata(environment, overrides?)`
+
+Returns the default metadata for a known environment, with optional field overrides.
+
+| Param | Type | Description |
+|---|---|---|
+| `environment` | `string` | Environment name (`"testnet"`, `"mainnet"`, or `"standalone"`) |
+| `overrides` | `Partial<ContractMetadata>` | Optional fields to merge on top of defaults |
+
+**Throws** if the environment name is not recognized.
+
+```typescript
+import { getContractMetadata } from "@zk-payroll/sdk";
+
+// Get testnet defaults
+const metadata = getContractMetadata("testnet");
+// {
+//   networkUrl: "https://soroban-testnet.stellar.org",
+//   networkPassphrase: "Test SDF Network ; September 2015",
+// }
+
+// Override with deployed contract IDs
+const deployed = getContractMetadata("testnet", {
+  payrollRegistryId: "CA3D5K7UZH7G4FZ...",
+  salaryCommitmentId: "CB3D5K7UZH7G4FZ...",
+  proofVerifierId: "CC3D5K7UZH7G4FZ...",
+  paymentExecutorId: "CD3D5K7UZH7G4FZ...",
+  adminPublicKey: "SAV75E2NK7Q5J2Y...",
+});
+```
+
+### `validateContractMetadata(metadata)`
+
+Validates a `ContractMetadata` object and returns a structured result with actionable errors.
+
+| Param | Type | Description |
+|---|---|---|
+| `metadata` | `ContractMetadata` | The metadata to validate |
+
+Returns `{ valid: boolean, errors: MetadataValidationError[] }`. Each error has `field`, `message`, and `code` properties.
+
+```typescript
+import { validateContractMetadata } from "@zk-payroll/sdk";
+
+const result = validateContractMetadata({
+  networkUrl: "https://soroban-testnet.stellar.org",
+  networkPassphrase: "Test SDF Network ; September 2015",
+  payrollRegistryId: "CA3D5K7UZH7G4FZ...",
+});
+
+if (!result.valid) {
+  for (const err of result.errors) {
+    console.error(`[${err.code}] ${err.field}: ${err.message}`);
+  }
+}
+```
+
+**Validation checks:**
+- `networkUrl` is a valid HTTP(S) URL
+- `networkPassphrase` matches a known Stellar network
+- `payrollRegistryId`, `salaryCommitmentId`, `proofVerifierId`, `paymentExecutorId` are valid Soroban contract ID format (starts with `C`, 56 alphanumeric characters)
+- `adminPublicKey` is a valid Stellar secret key format (starts with `S`, 56 characters)
+- Required fields (`networkUrl`, `networkPassphrase`) are present and non-empty
+
+### `isKnownEnvironment(environment)`
+
+Returns `true` if the given environment name is recognized.
+
+```typescript
+import { isKnownEnvironment } from "@zk-payroll/sdk";
+
+if (isKnownEnvironment(process.env.STELLAR_ENV)) {
+  // proceed
+}
+```
+
+### `listKnownEnvironments()`
+
+Returns the list of known environment descriptors.
+
+```typescript
+import { listKnownEnvironments } from "@zk-payroll/sdk";
+
+const envs = listKnownEnvironments();
+// [
+//   { name: "testnet",  label: "Stellar Testnet" },
+//   { name: "mainnet",  label: "Stellar Mainnet" },
+//   { name: "standalone", label: "Local Standalone" },
+// ]
+```
+
+### `buildClientConfig(metadata)`
+
+Extracts `networkUrl` and a contract IDs map from a metadata object, suitable for constructing typed contract clients.
+
+```typescript
+import {
+  buildClientConfig,
+  getContractMetadata,
+  rpc,
+  PayrollRegistryClient,
+  Keypair,
+} from "@zk-payroll/sdk";
+
+const metadata = getContractMetadata("testnet", {
+  payrollRegistryId: "CA3D5K7UZH7G4FZ...",
+});
+
+const config = buildClientConfig(metadata);
+const server = new rpc.Server(config.networkUrl);
+const signer = Keypair.fromSecret("SAV75E2NK7Q5J2Y...");
+
+const registry = new PayrollRegistryClient(
+  server,
+  config.contractIds.payrollRegistryId
+);
+
+await registry.getRegistry("GEMPLOYER...", "GEMPLOYEE...", signer);
+```
+
+### `ContractMetadata`
+
+```typescript
+interface ContractMetadata {
+  networkUrl: string;
+  networkPassphrase: string;
+  payrollRegistryId?: string;
+  salaryCommitmentId?: string;
+  proofVerifierId?: string;
+  paymentExecutorId?: string;
+  adminPublicKey?: string;
+}
+```
+
+### `KNOWN_ENVIRONMENTS`
+
+A static array of `KnownEnvironment` entries defining the built-in network presets. Each entry has:
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | `string` | Machine-readable key (`"testnet"`, `"mainnet"`, `"standalone"`) |
+| `label` | `string` | Human-readable label |
+| `metadata` | `ContractMetadata` | Default network settings |
+
+---
 
 ## See Also
 

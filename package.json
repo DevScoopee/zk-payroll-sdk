@@ -8,14 +8,14 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "rimraf dist && tsc",
-    "test": "jest",
-    "clean": "rimraf dist",
-    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
-    "lint:fix": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" --fix",
-    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
-    "typecheck": "tsc --noEmit",
-    "docs:build": "typedoc"
+    "build": "npm run build -w packages/core",
+    "test": "npm run test -w packages/core",
+    "clean": "npm run clean -w packages/core",
+    "lint": "npm run lint -w packages/core",
+    "lint:fix": "npm run lint:fix -w packages/core",
+    "format": "npm run format -w packages/core",
+    "typecheck": "npm run typecheck -w packages/core",
+    "docs:build": "npm run docs:build -w packages/core"
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^14.5.0",
