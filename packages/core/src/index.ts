@@ -50,6 +50,9 @@ export * from "./testing";
 export { TransactionWatcher } from "./events";
 export type { ConfirmationOptions, ConfirmationResult } from "./events";
 
+// ── Pagination Helpers ───────────────────────────────────────────────────────
+export * from "./pagination";
+
 // ── Event Stream Parser ──────────────────────────────────────────────────────
 export {
   parseContractEvent,
