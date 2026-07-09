@@ -19,7 +19,7 @@ export interface WorkerProofOptions {
    * Global progress handler applied to every generateProof call unless
    * overridden by the per-call onProgress argument.
    */
-  onProgress?: ProofProgressCallback;
+  onProgress?: PayrollProgressCallback;
   /**
    * Maximum milliseconds to wait for the worker to respond before
    * rejecting with a timeout error. Defaults to 120 000 ms (2 minutes).
@@ -212,7 +212,7 @@ export class WorkerProofGenerator implements IProofGenerator {
    */
   generateProof(
     witness: Record<string, unknown>,
-    onProgress?: ProofProgressCallback
+    onProgress?: PayrollProgressCallback
   ): Promise<ProofPayload> {
     const inner = (): Promise<ProofPayload> =>
       this.dispatch(

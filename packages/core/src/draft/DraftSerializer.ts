@@ -1,4 +1,5 @@
 import { DraftExportResult, DraftImportResult, PayrollDraft, PayrollDraftEntry } from "./types";
+import { SerializationError } from "../errors";
 
 const CURRENT_DRAFT_VERSION = 1;
 
@@ -67,32 +68,32 @@ export function exportDraft(draft: PayrollDraft): DraftExportResult {
  */
 export function importDraft(raw: string, expectedChecksum?: string): DraftImportResult {
   if (!raw || raw.trim() === "") {
-    throw new Error("Draft data is empty.");
+    throw new SerializationError("Draft data is empty.", "EMPTY_DRAFT_DATA");
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new Error("Draft data is not valid JSON.");
+    throw new SerializationError("Draft data is not valid JSON.", "INVALID_JSON");
   }
 
   if (!parsed || typeof parsed !== "object") {
-    throw new Error("Draft data must be a JSON object.");
+    throw new SerializationError("Draft data must be a JSON object.", "INVALID_JSON_OBJECT");
   }
 
   const obj = parsed as Record<string, unknown>;
 
   if (typeof obj.version !== "number") {
-    throw new Error("Draft is missing a numeric version field.");
+    throw new SerializationError("Draft is missing a numeric version field.", "MISSING_VERSION");
   }
 
   if (!Array.isArray(obj.entries)) {
-    throw new Error("Draft is missing an entries array.");
+    throw new SerializationError("Draft is missing an entries array.", "MISSING_ENTRIES");
   }
 
   if (expectedChecksum !== undefined && simpleChecksum(raw) !== expectedChecksum) {
-    throw new Error("Draft checksum mismatch — data may have been tampered with.");
+    throw new SerializationError("Draft checksum mismatch — data may have been tampered with.", "CHECKSUM_MISMATCH");
   }
 
   const warnings: string[] = [];

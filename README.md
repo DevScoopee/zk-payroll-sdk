@@ -10,11 +10,22 @@ npm install @zk-payroll/sdk
 
 ## Usage
 
+The SDK provides configuration presets for common environments to simplify initialization:
+
 ```typescript
-import { PayrollService, DEFAULT_CONFIG } from "@zk-payroll/sdk";
+import { PayrollService, ConfigPresets } from "@zk-payroll/sdk";
+
+// Initialize config for a specific environment
+const config = ConfigPresets.testnet()
+  .withContractId("CCONTRACT_ID...")
+  .withProofConfig({
+    wasmUrl: "https://cdn.example.com/payroll_circuit.wasm",
+    zkeyUrl: "https://cdn.example.com/payroll_circuit.zkey",
+  })
+  .build(); // Validates required fields
 
 // Initialize service
-const service = new PayrollService(DEFAULT_CONFIG);
+const service = new PayrollService(config);
 
 // Process a private payment
 await service.processPayment(
@@ -23,6 +34,13 @@ await service.processPayment(
 );
 ```
 
+### Configuration Validations
+
+The `ConfigBuilder` fails fast if required configuration is missing or malformed:
+
+```typescript
+// Throws Error: "Configuration validation failed:\n- contractId is malformed: invalid_id"
+ConfigPresets.testnet().withContractId("invalid_id").build();
 ## Idempotent retries
 
 For safe retries, pass an `idempotencyKey` when processing a payment.
@@ -103,6 +121,45 @@ const txHash = await mockContract.deposit(1000n);
 
 See the [Testing Guide](docs/TESTING.md) for complete documentation.
 
+## Examples
+
+Runnable examples covering two core use cases are in the [`examples/`](./examples/) directory.
+Each example works out of the box in demo mode (no Stellar node required) and switches to a
+live network automatically when the relevant environment variables are set.
+
+### Employee Onboarding
+
+[`examples/employee-onboarding.ts`](./examples/employee-onboarding.ts)
+
+Shows how to onboard a new employee: verify they have no existing payroll account, fund it
+with an initial allocation, and confirm the deposit was recorded.
+
+```bash
+npx tsx examples/employee-onboarding.ts
+```
+
+### Payroll Execution
+
+[`examples/payroll-execution.ts`](./examples/payroll-execution.ts)
+
+Shows how to run a full private payroll batch: configure `SnarkjsProofGenerator` with circuit
+artifacts and caching, wire up `PayrollService`, process multiple payments, and report results.
+
+```bash
+npx tsx examples/payroll-execution.ts
+```
+
+### Configuration
+
+Copy the environment variable template and fill in your values to run against a live network:
+
+```bash
+cp examples/.env.example examples/.env
+# edit examples/.env
+source examples/.env && npx tsx examples/payroll-execution.ts
+```
+
+See [`examples/.env.example`](./examples/.env.example) for all available variables.
 ## Typed Contract Clients
 
 The SDK provides typed client wrappers for the core ZK Payroll contracts. Each client exposes typed methods that encode arguments and decode responses automatically.
@@ -258,10 +315,42 @@ Each `DiagnosticEntry` contains:
 - `error?: Error` - The caught error object, if any.
 - `details?: Record<string, unknown>` - Extra context (e.g. network passphrases or RPC response details).
 
+## Multi-Asset Support
+
+The SDK provides a centralised `AssetRegistry` that maps asset identifiers to labels,
+decimal precision, and display behaviour. Applications can extend it with any custom
+Soroban token.
+
+```typescript
+import { AssetRegistry, formatAmount, parseAmount } from "@zk-payroll/sdk";
+
+// Use a built-in asset (native XLM, USDC, EUROC ship pre-registered)
+const xlm = AssetRegistry.getOrThrow("native");
+formatAmount(10_000_000n, xlm); // "1.0000000 XLM"
+
+// Register a custom Soroban token
+AssetRegistry.register({
+  id: "CTOKEN_CORP123",
+  symbol: "CORP",
+  label: "Corp Company Token",
+  decimals: 7,
+});
+
+const corp = AssetRegistry.getOrThrow("CTOKEN_CORP123");
+parseAmount("500.00 CORP", corp); // 3_500_000_000n
+```
+
+See the [Multi-Asset Guide](./docs/MULTI_ASSET.md) for the full API reference, isolation
+patterns for tests, and rules for extending the registry in production.
+
 ## Documentation
 
+- [Runtime Support Matrix](./docs/SUPPORT_MATRIX.md) - Supported Node.js and browser versions
 - [API Reference](./docs/API.md) - Complete API documentation
+- [Error Handling](./docs/ERRORS.md) - Public error hierarchy and recovery patterns
 - [ZK Proof Generation](./docs/ZK_PROOF_GENERATION.md) - Detailed proof generation guide
+- [Versioning & Compatibility](./docs/VERSIONING.md) - SDK semantic versioning and contract compatibility matrix
+- [SDK Migration Cookbook](./docs/SDK_MIGRATION_COOKBOOK.md) - Step-by-step upgrade checklist and migration patterns
 - [Troubleshooting](./docs/TROUBLESHOOTING.md) - Solutions for common CI, dependency, and environment issues
 
 ## Development

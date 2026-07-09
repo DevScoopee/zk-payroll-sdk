@@ -12,6 +12,44 @@ export type { ErrorContext, ContractErrorCodeType } from "./core/errors";
 // ── Backward-compatible aliases ─────────────────────────────────────────────
 import { ZkPayrollError } from "./core/errors";
 
+/**
+ * @deprecated Use `ZkPayrollError` instead.
+ */
+export class PayrollError extends ZkPayrollError {
+  constructor(message: string, code: any, context: Record<string, any> = {}) {
+    let sanitizedCode = code;
+    if (typeof code === "number" && code < 2000) {
+      sanitizedCode = String(code);
+    }
+    super(message, sanitizedCode, context);
+    this.name = "PayrollError";
+    (this as unknown as { code: number }).code = code;
+  }
+}
+
+export class WalletError extends ZkPayrollError {
+  constructor(
+    message: string,
+    code: string,
+    public walletId?: string,
+    context: Record<string, any> = {}
+  ) {
+    super(message, code, context);
+    this.name = "WalletError";
+  }
+}
+
+export class SerializationError extends ZkPayrollError {
+  constructor(
+    message: string,
+    code: any = "SERIALIZATION_FAILED",
+    context: Record<string, any> = {}
+  ) {
+    super(message, code, context);
+    this.name = "SerializationError";
+  }
+}
+
 /** Error codes for PayrollService validation/orchestration failures */
 export const PayrollServiceErrorCode = {
   PROOF_GENERATION_FAILED: 2001,
@@ -24,7 +62,7 @@ export type PayrollServiceErrorCode =
   (typeof PayrollServiceErrorCode)[keyof typeof PayrollServiceErrorCode];
 
 /**
- * @deprecated Use `ZkPayrollError` instead.
+ * Wallet error codes
  */
 export class PayrollError extends ZkPayrollError {
   constructor(message: string, code: number) {
@@ -35,6 +73,5 @@ export class PayrollError extends ZkPayrollError {
 
 /** @deprecated Use structured error logging instead. */
 export function handleApiError(error: unknown): void {
-  // eslint-disable-next-line no-console
   console.error("API Error:", error);
 }

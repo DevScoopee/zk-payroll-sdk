@@ -1,5 +1,4 @@
 import { groth16 } from "snarkjs";
-import axios from "axios";
 import { CacheProvider } from "../cache/CacheProvider";
 import { PayrollError } from "../errors";
 import {
@@ -41,6 +40,7 @@ export class SnarkjsProofGenerator implements IPreloadableProofGenerator {
   private wasmFetchPromise?: Promise<ArrayBuffer>;
   private zkeyFetchPromise?: Promise<Uint8Array>;
   private preloadStatus: PreloadStatus = { wasmLoaded: false, zkeyLoaded: false };
+  private readonly resolver: IArtifactResolver;
 
   private readonly dedup: IdempotencyRegistry<ProofPayload>;
   private readonly semaphore: Semaphore;
@@ -172,19 +172,16 @@ export class SnarkjsProofGenerator implements IPreloadableProofGenerator {
         responseType: "arraybuffer",
         timeout: 30000,
       });
-
-      this.wasmCache = response.data;
-      this.preloadStatus = { ...this.preloadStatus, wasmLoaded: true };
-      this.logger?.info("artifact_fetch_complete", { type: "wasm" });
-      return this.wasmCache;
-    } catch (error) {
-      throw new PayrollError(
-        `Failed to fetch .wasm file from ${this.config.wasmUrl}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        500
-      );
     }
+    return this.resolvePromise;
+  }
+
+  private async fetchWasm(): Promise<ArrayBuffer> {
+    if (this.wasmCache) {
+      return this.wasmCache;
+    }
+    const resolved = await this.ensureResolved();
+    return resolved.wasm;
   }
 
   /**

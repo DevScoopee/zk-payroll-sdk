@@ -1,8 +1,7 @@
 import { rpc, Contract, TransactionBuilder, Networks, BASE_FEE, xdr } from "@stellar/stellar-sdk";
 import type { ISigner } from "../signer/types";
 import { ContractExecutionError, ContractErrorCode, mapRpcError } from "../errors";
-import { withRetry } from "../core";
-import { IdempotencyRegistry } from "../core/idempotency";
+import { RunIdentifier } from "../core/run-identifier";
 
 /** How long (ms) to wait between transaction status polls */
 const POLL_INTERVAL_MS = 2_000;
@@ -44,22 +43,30 @@ export abstract class BaseContractWrapper {
   /**
    * Invoke a contract method end-to-end.
    *
-   * @param method   - Name of the contract function to call
-   * @param args     - XDR-encoded arguments (use `nativeToScVal` from stellar-sdk)
-   * @param signer   - Signer that provides the public key and signs the transaction
-   * @param network  - Stellar network passphrase (defaults to testnet)
-   * @returns        - The decoded XDR result value
-   * @throws         - `ContractExecutionError` on any RPC or contract failure
+   * Generates a deterministic request ID from the method name when none
+   * is provided, enabling correlation across submission and polling flows.
+   * Pass an explicit `requestId` if you need to group operations under a
+   * shared identifier (e.g., from `RunIdentifier.generateCorrelationId()`).
+   *
+   * @param method     - Name of the contract function to call
+   * @param args       - XDR-encoded arguments (use `nativeToScVal` from stellar-sdk)
+   * @param signer     - Keypair that signs the transaction
+   * @param network    - Stellar network passphrase (defaults to testnet)
+   * @param requestId  - Optional request ID for correlation tracing.
+   *                     Auto-generated from `method` if omitted.
+   * @returns          - The decoded XDR result value
+   * @throws           - `ContractExecutionError` on any RPC or contract failure
    */
   protected async invoke(
     method: string,
     args: xdr.ScVal[],
-    signer: ISigner,
+    signer: Keypair,
     network: string = Networks.TESTNET,
-    options?: InvokeOptions
+    requestId?: string
   ): Promise<xdr.ScVal> {
-    const runInvocation = async (): Promise<xdr.ScVal> => {
-      try {
+    const reqId = requestId ?? RunIdentifier.generateRequestId(method);
+
+    try {
       // ── 1. Load the source account ─────────────────────────────────────
       const pubKey = await signer.getPublicKey();
       const account = await withRetry(() => this.server.getAccount(pubKey), {
@@ -85,7 +92,8 @@ export abstract class BaseContractWrapper {
       if (rpc.Api.isSimulationError(simResult)) {
         throw new ContractExecutionError(
           `Simulation failed for "${method}": ${simResult.error}`,
-          ContractErrorCode.SIMULATION_FAILED
+          ContractErrorCode.SIMULATION_FAILED,
+          { requestId: reqId }
         );
       }
 
@@ -105,22 +113,17 @@ export abstract class BaseContractWrapper {
           `Transaction submission failed for "${method}": ${JSON.stringify(
             sendResult.errorResult
           )}`,
-          ContractErrorCode.TRANSACTION_SUBMISSION_FAILED
+          ContractErrorCode.TRANSACTION_SUBMISSION_FAILED,
+          { requestId: reqId }
         );
       }
 
-        // ── 6. Poll for final status ───────────────────────────────────────
-        return await this.pollForResult(sendResult.hash, method);
-      } catch (err) {
-        // Re-throw already-typed errors, map everything else
-        if (err instanceof ContractExecutionError) throw err;
-        throw mapRpcError(err);
-      }
-    };
-
-    const idempotencyKey = options?.idempotencyKey?.trim();
-    if (!idempotencyKey) {
-      return runInvocation();
+      // ── 6. Poll for final status ───────────────────────────────────────
+      return await this.pollForResult(sendResult.hash, method, reqId);
+    } catch (err) {
+      // Re-throw already-typed errors, map everything else
+      if (err instanceof ContractExecutionError) throw err;
+      throw mapRpcError(err, { requestId: reqId });
     }
 
     return this.submissionIdempotency.execute(
@@ -136,7 +139,11 @@ export abstract class BaseContractWrapper {
    * Poll the RPC until the transaction reaches a terminal state.
    * Returns the XDR result value on success; throws on failure or timeout.
    */
-  private async pollForResult(txHash: string, method: string): Promise<xdr.ScVal> {
+  private async pollForResult(
+    txHash: string,
+    method: string,
+    requestId: string
+  ): Promise<xdr.ScVal> {
     for (let attempt = 0; attempt < MAX_POLLS; attempt++) {
       await sleep(POLL_INTERVAL_MS);
 
@@ -156,7 +163,8 @@ export abstract class BaseContractWrapper {
       if (statusResult.status === rpc.Api.GetTransactionStatus.FAILED) {
         throw new ContractExecutionError(
           `Contract reverted during "${method}": ${JSON.stringify(statusResult.resultMetaXdr)}`,
-          ContractErrorCode.CONTRACT_REVERT
+          ContractErrorCode.CONTRACT_REVERT,
+          { requestId }
         );
       }
 
@@ -165,7 +173,8 @@ export abstract class BaseContractWrapper {
 
     throw new ContractExecutionError(
       `Transaction timed out after ${MAX_POLLS} polls for "${method}" (hash: ${txHash})`,
-      ContractErrorCode.TRANSACTION_TIMEOUT
+      ContractErrorCode.TRANSACTION_TIMEOUT,
+      { requestId }
     );
   }
 }
