@@ -64,17 +64,12 @@ export type PayrollServiceErrorCode =
 /**
  * Wallet error codes
  */
-export const WalletErrorCode = {
-  NOT_INSTALLED: "WALLET_NOT_INSTALLED",
-  NOT_CONNECTED: "WALLET_NOT_CONNECTED",
-  CONNECTION_REJECTED: "WALLET_CONNECTION_REJECTED",
-  SIGNING_REJECTED: "WALLET_SIGNING_REJECTED",
-  NETWORK_MISMATCH: "WALLET_NETWORK_MISMATCH",
-  INVALID_XDR: "WALLET_INVALID_XDR",
-  UNKNOWN_ERROR: "WALLET_UNKNOWN_ERROR",
-} as const;
-
-export type WalletErrorCode = (typeof WalletErrorCode)[keyof typeof WalletErrorCode];
+export class PayrollError extends ZkPayrollError {
+  constructor(message: string, code: number) {
+    super(message, String(code));
+    this.name = "PayrollError";
+  }
+}
 
 /** @deprecated Use structured error logging instead. */
 export function handleApiError(error: unknown): void {

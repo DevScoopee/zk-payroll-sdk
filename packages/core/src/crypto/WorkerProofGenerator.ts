@@ -1,7 +1,15 @@
-import { IProofGenerator, ProofPayload, ProofGeneratorConfig } from "./IProofGenerator";
-import { WorkerRequest, WorkerResponse } from "./WorkerMessages";
+import { IProofGenerator, ProofPayload, ProofGeneratorConfig, witnessKey } from "./IProofGenerator";
+import { WorkerRequest, WorkerResponse, ProofProgressStage } from "./WorkerMessages";
 import { PayrollError } from "../errors";
-import type { PayrollProgressCallback } from "../progress";
+import { IdempotencyRegistry } from "../core/idempotency";
+
+/**
+ * Callback invoked as the worker reports proof generation progress.
+ *
+ * @param stage    - Current stage of work inside the worker
+ * @param progress - Optional 0-100 completion percentage
+ */
+export type ProofProgressCallback = (stage: ProofProgressStage, progress?: number) => void;
 
 /**
  * Options for WorkerProofGenerator.
@@ -17,6 +25,11 @@ export interface WorkerProofOptions {
    * rejecting with a timeout error. Defaults to 120 000 ms (2 minutes).
    */
   timeoutMs?: number;
+  /**
+   * Key for per-witness request deduplication. Same-witness concurrent calls
+   * share the worker's response. Defaults to `true`.
+   */
+  dedupSameWitness?: boolean;
 }
 
 /**
@@ -36,7 +49,13 @@ export interface WorkerLike {
 interface PendingRequest {
   resolve: (payload: ProofPayload) => void;
   reject: (err: Error) => void;
-  onProgress?: PayrollProgressCallback;
+  /**
+   * Progress callbacks registered for this request. The dispatch helper
+   * decides whether to attach the per-call callback or the global one
+   * (per-call wins) so a single in-flight request only carries one
+   * callback unless dedup stacks multiple callers.
+   */
+  progressCallbacks: Set<ProofProgressCallback>;
   timer: ReturnType<typeof setTimeout>;
 }
 
@@ -44,6 +63,14 @@ interface PendingRequest {
  * IProofGenerator implementation that delegates proof generation to a
  * browser Web Worker, keeping the main UI thread responsive during heavy
  * witness computation.
+ *
+ * Concurrency guarantees (Issue #65):
+ * - Same-witness concurrent calls share a single in-flight worker request and
+ *   resolve to the same `ProofPayload` (configurable via
+ *   `options.dedupSameWitness`).
+ * - Per-call `onProgress` callbacks are honored when requests are NOT
+ *   deduplicated; under dedup the FIRST caller's callback receives progress
+ *   for the shared request (subsequent callers wait silently for the result).
  *
  * @example Basic usage (Vite)
  * ```ts
@@ -70,6 +97,8 @@ interface PendingRequest {
  */
 export class WorkerProofGenerator implements IProofGenerator {
   private readonly pending = new Map<string, PendingRequest>();
+  private readonly dedup: IdempotencyRegistry<ProofPayload>;
+  private readonly dedupEnabled: boolean;
   private seq = 0;
 
   private readonly messageHandler: (event: { data: WorkerResponse }) => void;
@@ -80,6 +109,8 @@ export class WorkerProofGenerator implements IProofGenerator {
     private readonly config: ProofGeneratorConfig,
     private readonly options: WorkerProofOptions = {}
   ) {
+    this.dedupEnabled = options.dedupSameWitness !== false;
+    this.dedup = new IdempotencyRegistry<ProofPayload>(0);
     this.messageHandler = this.onMessage.bind(this);
     this.errorHandler = this.onError.bind(this);
     this.worker.addEventListener("message", this.messageHandler);
@@ -107,7 +138,9 @@ export class WorkerProofGenerator implements IProofGenerator {
         break;
 
       case "PROGRESS":
-        pending.onProgress?.(msg.event);
+        for (const cb of pending.progressCallbacks) {
+          cb(msg.stage, msg.progress);
+        }
         break;
 
       case "PRELOAD_DONE":
@@ -132,10 +165,7 @@ export class WorkerProofGenerator implements IProofGenerator {
 
   // ── Dispatch helper ────────────────────────────────────────────────────────
 
-  private dispatch(
-    req: WorkerRequest,
-    onProgress?: PayrollProgressCallback
-  ): Promise<ProofPayload> {
+  private dispatch(req: WorkerRequest, onProgress?: ProofProgressCallback): Promise<ProofPayload> {
     return new Promise<ProofPayload>((resolve, reject) => {
       const timeoutMs = this.options.timeoutMs ?? 120_000;
       const timer = setTimeout(() => {
@@ -143,10 +173,19 @@ export class WorkerProofGenerator implements IProofGenerator {
         reject(new PayrollError(`Proof generation timed out after ${timeoutMs}ms`, 408));
       }, timeoutMs);
 
+      const progressCallbacks = new Set<ProofProgressCallback>();
+      // Per-call callback wins; otherwise fall back to the global handler
+      // declared in WorkerProofOptions. Only one fires per progress event.
+      if (onProgress) {
+        progressCallbacks.add(onProgress);
+      } else if (this.options.onProgress) {
+        progressCallbacks.add(this.options.onProgress);
+      }
+
       this.pending.set(req.id, {
         resolve,
         reject,
-        onProgress: onProgress ?? this.options.onProgress,
+        progressCallbacks,
         timer,
       });
 
@@ -163,6 +202,10 @@ export class WorkerProofGenerator implements IProofGenerator {
   /**
    * Generates a ZK proof inside the worker.
    *
+   * When `options.dedupSameWitness` is enabled (default), concurrent calls
+   * for an equal witness share a single worker request — saving CPU cycles
+   * and avoiding redundant message traffic.
+   *
    * @param witness    - Circuit input signals (bigint values are supported)
    * @param onProgress - Optional per-call progress callback; overrides the
    *                     global `onProgress` set in the constructor options
@@ -171,10 +214,22 @@ export class WorkerProofGenerator implements IProofGenerator {
     witness: Record<string, unknown>,
     onProgress?: PayrollProgressCallback
   ): Promise<ProofPayload> {
-    return this.dispatch(
-      { type: "GENERATE_PROOF", id: this.nextId(), witness, config: this.config },
-      onProgress
-    );
+    const inner = (): Promise<ProofPayload> =>
+      this.dispatch(
+        {
+          type: "GENERATE_PROOF",
+          id: this.nextId(),
+          witness,
+          config: this.config,
+        },
+        onProgress
+      );
+
+    if (!this.dedupEnabled) {
+      return inner();
+    }
+
+    return this.dedup.execute(witnessKey(witness), inner);
   }
 
   /**
@@ -208,6 +263,7 @@ export class WorkerProofGenerator implements IProofGenerator {
       pending.reject(err);
     }
     this.pending.clear();
+    this.dedup.clear();
     this.worker.removeEventListener("message", this.messageHandler);
     this.worker.removeEventListener("error", this.errorHandler);
     this.worker.terminate();
