@@ -234,11 +234,15 @@ export function parseContractEvents(events: RawContractEvent[]): TypedContractEv
 
 function parseRegistered(event: RawContractEvent): RegisteredEvent {
   const topics = event.topics;
+  const employer = decodeAddress(topics[1]);
+  if (!employer) {
+    throw new EventParsingError("Missing required employer topic in registered event");
+  }
   const data = decodeDataMap(event.data);
 
   return {
     type: "registered",
-    employer: decodeAddress(topics[1]),
+    employer,
     employee: decodeAddress(topics[2]),
     salary: decodeBigInt(data.salary),
     token: decodeAddress(data.token),
@@ -356,7 +360,14 @@ function parsePaymentCancelled(event: RawContractEvent): PaymentCancelledEvent {
 // ── ScVal Decoding Helpers ───────────────────────────────────────────────────
 
 function decodeEventName(topic: xdr.ScVal): string {
-  return topic.sym()?.toString() ?? "";
+  try {
+    if (topic.switch()?.name === "scvSymbol") {
+      return topic.sym()?.toString() ?? "";
+    }
+  } catch {
+    // Ignore non-symbol topics
+  }
+  return "";
 }
 
 function decodeAddress(scVal: xdr.ScVal | undefined): string {
@@ -370,14 +381,21 @@ function decodeAddress(scVal: xdr.ScVal | undefined): string {
 
 function decodeBigInt(scVal: xdr.ScVal | undefined): bigint {
   if (!scVal) return 0n;
-  const i128 = scVal.i128();
-  if (i128) {
-    const hi = BigInt(i128.hi());
-    const lo = BigInt(i128.lo());
-    return (hi << 64n) | lo;
+  try {
+    const swName = scVal.switch()?.name;
+    if (swName === "scvI128") {
+      const i128 = scVal.i128();
+      const hi = BigInt(i128.hi().toString());
+      const lo = BigInt(i128.lo().toString());
+      return (hi << 64n) | lo;
+    }
+    if (swName === "scvU64") {
+      const u64 = scVal.u64();
+      return BigInt(u64.toString());
+    }
+  } catch {
+    return 0n;
   }
-  const u64 = scVal.u64();
-  if (u64) return BigInt(u64);
   return 0n;
 }
 

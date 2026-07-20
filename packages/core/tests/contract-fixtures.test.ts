@@ -28,7 +28,7 @@ import {
   PROOF_PAYLOAD_EDGE,
   PROOF_STRUCT_NORMAL,
   PROOF_STRUCT_MULTI,
-  VERIFY_PROOF_REQUEST_NORMAL,
+  VERIFY_REQUEST_NORMAL,
 } from './fixtures/proof-request-fixtures';
 
 // ── Contract ABI Compatibility ──────────────────────────────────────────────
@@ -344,7 +344,7 @@ describe('Contract Fixture Compatibility Tests', () => {
 
       expect(typeof PROOF_PAYLOAD_NORMAL).toBe('object');
       expect(typeof PROOF_STRUCT_NORMAL).toBe('object');
-      expect(typeof VERIFY_PROOF_REQUEST_NORMAL).toBe('object');
+      expect(typeof VERIFY_REQUEST_NORMAL).toBe('object');
     });
 
     it('proof payload contains all required proof fields', () => {

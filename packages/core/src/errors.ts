@@ -3,11 +3,24 @@ export {
   NetworkError,
   ProofGenerationError,
   ContractExecutionError,
+  RpcTimeoutError,
+  InvalidResponseError,
   ValidationError,
   ContractErrorCode,
+  WalletError,
+  WalletRejectionError,
+  WalletErrorCode,
+  toUserFriendlyError,
+  DEFAULT_ERROR_MESSAGES,
   mapRpcError,
 } from "./core/errors";
-export type { ErrorContext, ContractErrorCodeType } from "./core/errors";
+export type {
+  ErrorContext,
+  ContractErrorCodeType,
+  WalletErrorCodeType,
+  UserFriendlyError,
+  ErrorMessageOverrides,
+} from "./core/errors";
 
 // ── Backward-compatible aliases ─────────────────────────────────────────────
 import { ZkPayrollError } from "./core/errors";
@@ -16,26 +29,14 @@ import { ZkPayrollError } from "./core/errors";
  * @deprecated Use `ZkPayrollError` instead.
  */
 export class PayrollError extends ZkPayrollError {
-  constructor(message: string, code: any, context: Record<string, any> = {}) {
+  constructor(message: string, code: any, context: Record<string, any> = {}, cause?: unknown) {
     let sanitizedCode = code;
-    if (typeof code === "number" && code < 2000) {
+    if (typeof code === "number" && code >= 1000) {
       sanitizedCode = String(code);
     }
-    super(message, sanitizedCode, context);
+    super(message, String(sanitizedCode), context, cause);
     this.name = "PayrollError";
-    (this as unknown as { code: number }).code = code;
-  }
-}
-
-export class WalletError extends ZkPayrollError {
-  constructor(
-    message: string,
-    code: string,
-    public walletId?: string,
-    context: Record<string, any> = {}
-  ) {
-    super(message, code, context);
-    this.name = "WalletError";
+    (this as unknown as { code: any }).code = sanitizedCode;
   }
 }
 
@@ -43,9 +44,10 @@ export class SerializationError extends ZkPayrollError {
   constructor(
     message: string,
     code: any = "SERIALIZATION_FAILED",
-    context: Record<string, any> = {}
+    context: Record<string, any> = {},
+    cause?: unknown
   ) {
-    super(message, code, context);
+    super(message, code, context, cause);
     this.name = "SerializationError";
   }
 }
@@ -60,16 +62,6 @@ export const PayrollServiceErrorCode = {
 
 export type PayrollServiceErrorCode =
   (typeof PayrollServiceErrorCode)[keyof typeof PayrollServiceErrorCode];
-
-/**
- * Wallet error codes
- */
-export class PayrollError extends ZkPayrollError {
-  constructor(message: string, code: number) {
-    super(message, String(code));
-    this.name = "PayrollError";
-  }
-}
 
 /** @deprecated Use structured error logging instead. */
 export function handleApiError(error: unknown): void {

@@ -1,3 +1,4 @@
+import { StrKey } from "@stellar/stellar-sdk";
 import {
   getContractMetadata,
   isKnownEnvironment,
@@ -7,6 +8,8 @@ import {
   KNOWN_ENVIRONMENTS,
 } from "../src/metadata";
 import { MetadataErrorCode } from "../src/metadata/types";
+
+const VALID_CONTRACT_ID = StrKey.encodeContract(Buffer.alloc(32, 1));
 
 describe("Contract Metadata Discovery", () => {
   describe("getContractMetadata", () => {
@@ -95,7 +98,7 @@ describe("Contract Metadata Discovery", () => {
       const result = validateContractMetadata({
         networkUrl: "https://soroban-testnet.stellar.org",
         networkPassphrase: "Test SDF Network ; September 2015",
-        payrollRegistryId: "CA3D5K7UZH7G4FZ5Q6XJ2Y3A4B5C6D7E8F9G0H1J2K3L4M5N6O7P8Q9R0S",
+        payrollRegistryId: VALID_CONTRACT_ID,
       });
 
       expect(result.valid).toBe(true);
@@ -155,7 +158,7 @@ describe("Contract Metadata Discovery", () => {
       const result = validateContractMetadata({
         networkUrl: "https://soroban-testnet.stellar.org",
         networkPassphrase: "Test SDF Network ; September 2015",
-        payrollRegistryId: "CA3D5K7UZH7G4FZ5Q6XJ2Y3A4B5C6D7E8F9G0H1J2K3L4M5N6O7P8Q9R0S",
+        payrollRegistryId: VALID_CONTRACT_ID,
       });
 
       expect(result.valid).toBe(true);

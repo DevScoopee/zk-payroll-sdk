@@ -3,13 +3,7 @@ import { WorkerRequest, WorkerResponse, ProofProgressStage } from "./WorkerMessa
 import { PayrollError } from "../errors";
 import { IdempotencyRegistry } from "../core/idempotency";
 
-/**
- * Callback invoked as the worker reports proof generation progress.
- *
- * @param stage    - Current stage of work inside the worker
- * @param progress - Optional 0-100 completion percentage
- */
-export type ProofProgressCallback = (stage: ProofProgressStage, progress?: number) => void;
+import { PayrollProgressCallback, PayrollProgressEvent, PayrollProgressStage } from "../progress";
 
 /**
  * Options for WorkerProofGenerator.
@@ -55,7 +49,7 @@ interface PendingRequest {
    * (per-call wins) so a single in-flight request only carries one
    * callback unless dedup stacks multiple callers.
    */
-  progressCallbacks: Set<ProofProgressCallback>;
+  progressCallbacks: Set<PayrollProgressCallback>;
   timer: ReturnType<typeof setTimeout>;
 }
 
@@ -139,7 +133,22 @@ export class WorkerProofGenerator implements IProofGenerator {
 
       case "PROGRESS":
         for (const cb of pending.progressCallbacks) {
-          cb(msg.stage, msg.progress);
+          const rawStage = "event" in msg && msg.event ? msg.event.stage : (msg as any).stage;
+          const mappedStage: PayrollProgressStage =
+            rawStage === "loading_zkey" ? "proof_loading_zkey"
+            : rawStage === "loading_wasm" ? "proof_loading_wasm"
+            : rawStage === "generating" ? "proof_generating"
+            : rawStage === "done" ? "proof_done"
+            : (rawStage ?? "proof_generating");
+
+          const event: PayrollProgressEvent = "event" in msg && msg.event ? msg.event : {
+            operation: "proof",
+            stage: mappedStage,
+            message: "Generating proof",
+            progress: (msg as any).progress,
+            timestamp: new Date().toISOString(),
+          };
+          cb(event);
         }
         break;
 
@@ -165,7 +174,7 @@ export class WorkerProofGenerator implements IProofGenerator {
 
   // ── Dispatch helper ────────────────────────────────────────────────────────
 
-  private dispatch(req: WorkerRequest, onProgress?: ProofProgressCallback): Promise<ProofPayload> {
+  private dispatch(req: WorkerRequest, onProgress?: PayrollProgressCallback): Promise<ProofPayload> {
     return new Promise<ProofPayload>((resolve, reject) => {
       const timeoutMs = this.options.timeoutMs ?? 120_000;
       const timer = setTimeout(() => {
@@ -173,7 +182,7 @@ export class WorkerProofGenerator implements IProofGenerator {
         reject(new PayrollError(`Proof generation timed out after ${timeoutMs}ms`, 408));
       }, timeoutMs);
 
-      const progressCallbacks = new Set<ProofProgressCallback>();
+      const progressCallbacks = new Set<PayrollProgressCallback>();
       // Per-call callback wins; otherwise fall back to the global handler
       // declared in WorkerProofOptions. Only one fires per progress event.
       if (onProgress) {
