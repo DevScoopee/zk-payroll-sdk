@@ -203,3 +203,35 @@ function classifyGenericError(error: Error): RetryDecision {
     "Generic Error without known retryable markers — retry with caution"
   );
 }
+
+export interface RetryOptions {
+  attempts?: number;
+  delayMs?: number;
+  backoffFactor?: number;
+}
+
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  options: RetryOptions = {}
+): Promise<T> {
+  const attempts = options.attempts ?? 3;
+  const delayMs = options.delayMs ?? 100;
+  const backoffFactor = options.backoffFactor ?? 2;
+
+  let currentDelay = delayMs;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (attempt === attempts) break;
+      await new Promise((res) => setTimeout(res, currentDelay));
+      currentDelay *= backoffFactor;
+    }
+  }
+
+  throw lastError;
+}
+

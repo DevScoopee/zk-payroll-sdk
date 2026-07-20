@@ -184,7 +184,7 @@ export function resolvePageSize(requested?: number): number {
  */
 export function paginate<T>(
   records: T[],
-  options: PaginationOptions = 
+  options: PaginationOptions = {}
 ): PaginatedResult<T> {
   const pageSize = resolvePageSize(options.pageSize);
   const direction = options.direction ?? "forward";
@@ -246,7 +246,7 @@ export function paginate<T>(
 /**
  * Applies a `PayrollHistoryFilter` to an array of payroll records.
  */
-export function filterPayrollRecords
+export function filterPayrollRecords<
   T extends { amount: bigint; recipient: string; timestamp: number }
 >(records: T[], filter: PayrollHistoryFilter): T[] {
   return records.filter((r) => {
@@ -329,7 +329,7 @@ export async function* paginateIterator<T>(
  * const page = getPayrollHistoryPage(records, { recipient: "GABC..." }, { pageSize: 25 });
  * ```
  */
-export function getPayrollHistoryPage
+export function getPayrollHistoryPage<
   T extends { amount: bigint; recipient: string; timestamp: number }
 >(
   records: T[],

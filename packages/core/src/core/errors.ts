@@ -20,13 +20,17 @@ export interface ErrorContext {
  * any SDK error with a single `instanceof ZkPayrollError` check.
  */
 export class ZkPayrollError extends Error {
+  public readonly cause?: unknown;
+
   constructor(
     message: string,
     public readonly code: string,
-    public readonly context: ErrorContext = {}
+    public readonly context: ErrorContext = {},
+    cause?: unknown
   ) {
     super(message);
     this.name = this.constructor.name;
+    this.cause = cause;
   }
 }
 
@@ -40,9 +44,10 @@ export class NetworkError extends ZkPayrollError {
     message: string,
     code: string = "NETWORK_ERROR",
     context: ErrorContext = {},
-    public readonly statusCode?: number
+    public readonly statusCode?: number,
+    cause?: unknown
   ) {
-    super(message, code, context);
+    super(message, code, context, cause);
   }
 }
 
@@ -55,9 +60,58 @@ export class ProofGenerationError extends ZkPayrollError {
   constructor(
     message: string,
     code: string = "PROOF_GENERATION_FAILED",
-    context: ErrorContext = {}
+    context: ErrorContext = {},
+    cause?: unknown
   ) {
-    super(message, code, context);
+    super(message, code, context, cause);
+  }
+}
+
+// ── Wallet Errors ────────────────────────────────────────────────────────────
+
+/** Error codes for wallet interaction failures */
+export const WalletErrorCode = {
+  NOT_INSTALLED: "WALLET_NOT_INSTALLED",
+  NOT_CONNECTED: "WALLET_NOT_CONNECTED",
+  CONNECTION_REJECTED: "WALLET_CONNECTION_REJECTED",
+  SIGNING_REJECTED: "WALLET_SIGNING_REJECTED",
+  NETWORK_MISMATCH: "WALLET_NETWORK_MISMATCH",
+  INVALID_XDR: "WALLET_INVALID_XDR",
+  UNKNOWN_ERROR: "WALLET_UNKNOWN_ERROR",
+} as const;
+
+export type WalletErrorCodeType =
+  (typeof WalletErrorCode)[keyof typeof WalletErrorCode];
+
+/**
+ * Base class for wallet interaction errors.
+ */
+export class WalletError extends ZkPayrollError {
+  constructor(
+    message: string,
+    code: string = WalletErrorCode.UNKNOWN_ERROR,
+    public walletId?: string,
+    context: ErrorContext = {},
+    cause?: unknown
+  ) {
+    super(message, code, { ...context, ...(walletId ? { walletId } : {}) }, cause);
+    this.name = this.constructor.name;
+  }
+}
+
+/**
+ * Thrown when a user explicitly declines or rejects a wallet connection or transaction signature.
+ */
+export class WalletRejectionError extends WalletError {
+  constructor(
+    message: string = "User rejected the request in their wallet",
+    walletId?: string,
+    code: string = WalletErrorCode.SIGNING_REJECTED,
+    context: ErrorContext = {},
+    cause?: unknown
+  ) {
+    super(message, code, walletId, context, cause);
+    this.name = "WalletRejectionError";
   }
 }
 
@@ -68,8 +122,10 @@ export const ContractErrorCode = {
   SIMULATION_FAILED: "SIMULATION_FAILED",
   TRANSACTION_SUBMISSION_FAILED: "TRANSACTION_SUBMISSION_FAILED",
   TRANSACTION_TIMEOUT: "TRANSACTION_TIMEOUT",
+  RPC_TIMEOUT: "RPC_TIMEOUT",
   INSUFFICIENT_FEE: "INSUFFICIENT_FEE",
   CONTRACT_REVERT: "CONTRACT_REVERT",
+  INVALID_RESPONSE: "INVALID_RESPONSE",
   UNKNOWN_RPC_ERROR: "UNKNOWN_RPC_ERROR",
 } as const;
 
@@ -84,9 +140,40 @@ export class ContractExecutionError extends ZkPayrollError {
   constructor(
     message: string,
     code: ContractErrorCodeType = ContractErrorCode.UNKNOWN_RPC_ERROR,
-    context: ErrorContext = {}
+    context: ErrorContext = {},
+    cause?: unknown
   ) {
-    super(message, code, context);
+    super(message, code, context, cause);
+  }
+}
+
+/**
+ * Thrown when an RPC request or polling operation times out before resolving.
+ */
+export class RpcTimeoutError extends ContractExecutionError {
+  constructor(
+    message: string = "RPC request timed out",
+    context: ErrorContext = {},
+    cause?: unknown,
+    code: ContractErrorCodeType = ContractErrorCode.RPC_TIMEOUT
+  ) {
+    super(message, code, context, cause);
+    this.name = "RpcTimeoutError";
+  }
+}
+
+/**
+ * Thrown when the RPC node returns malformed, unparseable, or unexpected response data.
+ */
+export class InvalidResponseError extends ContractExecutionError {
+  constructor(
+    message: string = "RPC returned malformed or unexpected data",
+    context: ErrorContext = {},
+    cause?: unknown,
+    code: ContractErrorCodeType = ContractErrorCode.INVALID_RESPONSE
+  ) {
+    super(message, code, context, cause);
+    this.name = "InvalidResponseError";
   }
 }
 
@@ -100,9 +187,10 @@ export class ValidationError extends ZkPayrollError {
     message: string,
     public readonly field: string,
     code: string = "VALIDATION_ERROR",
-    context: ErrorContext = {}
+    context: ErrorContext = {},
+    cause?: unknown
   ) {
-    super(message, code, context);
+    super(message, code, context, cause);
   }
 }
 
@@ -117,6 +205,10 @@ export const DEFAULT_ERROR_MESSAGES: Record<string, string> = {
     "The transaction was rejected by the network. Please check your connection and try again.",
   [ContractErrorCode.TRANSACTION_TIMEOUT]:
     "The transaction did not confirm within the expected time. The network may be congested; please retry.",
+  [ContractErrorCode.RPC_TIMEOUT]:
+    "The request to the RPC endpoint timed out. The network may be congested; please retry.",
+  [ContractErrorCode.INVALID_RESPONSE]:
+    "Received an invalid or malformed response from the RPC node. Please try again.",
   [ContractErrorCode.INSUFFICIENT_FEE]:
     "The transaction fee was too low. Try increasing the fee and submitting again.",
   [ContractErrorCode.CONTRACT_REVERT]:
@@ -128,16 +220,16 @@ export const DEFAULT_ERROR_MESSAGES: Record<string, string> = {
     "Zero-knowledge proof generation failed. This may be due to invalid inputs or insufficient system resources.",
   VALIDATION_ERROR:
     "The provided parameters failed validation. Please review your inputs and try again.",
-  WALLET_NOT_INSTALLED: "The wallet extension is not installed. Please install it and try again.",
-  WALLET_NOT_CONNECTED: "The wallet is not connected. Please connect your wallet and try again.",
-  WALLET_CONNECTION_REJECTED:
-    "The wallet connection request was rejected. Please approve the connection and try again.",
-  WALLET_SIGNING_REJECTED:
-    "The transaction signing request was rejected. Please approve the signature and try again.",
-  WALLET_NETWORK_MISMATCH:
+  [WalletErrorCode.NOT_INSTALLED]: "The wallet extension is not installed. Please install it and try again.",
+  [WalletErrorCode.NOT_CONNECTED]: "The wallet is not connected. Please connect your wallet and try again.",
+  [WalletErrorCode.CONNECTION_REJECTED]:
+    "The wallet connection request was rejected. Please approve the connection in your wallet and try again.",
+  [WalletErrorCode.SIGNING_REJECTED]:
+    "The transaction signing request was rejected. Please approve the signature in your wallet and try again.",
+  [WalletErrorCode.NETWORK_MISMATCH]:
     "The wallet is on the wrong network. Please switch to the correct network and try again.",
-  WALLET_INVALID_XDR: "The transaction data is invalid. This may indicate a software bug.",
-  WALLET_UNKNOWN_ERROR: "An unexpected wallet error occurred. Please try again.",
+  [WalletErrorCode.INVALID_XDR]: "The transaction data is invalid. This may indicate a software bug.",
+  [WalletErrorCode.UNKNOWN_ERROR]: "An unexpected wallet error occurred. Please try again.",
 };
 
 /** Custom message overrides keyed by error code. */
@@ -162,21 +254,15 @@ export interface UserFriendlyError {
 }
 
 function extractCodeAndContext(error: unknown): { code: string; context: ErrorContext } {
-  if (typeof error === "object" && error !== null && "code" in error && "context" in error) {
-    const err = error as { code: unknown; context: unknown };
+  if (typeof error === "object" && error !== null && "code" in error) {
+    const err = error as { code: unknown; context?: unknown; walletId?: unknown };
+    const context: ErrorContext = {
+      ...(typeof err.context === "object" && err.context !== null ? err.context : {}),
+      ...(err.walletId ? { walletId: String(err.walletId) } : {}),
+    };
     return {
       code: String(err.code ?? ContractErrorCode.UNKNOWN_RPC_ERROR),
-      context: (typeof err.context === "object" && err.context !== null
-        ? err.context
-        : {}) as ErrorContext,
-    };
-  }
-
-  if (typeof error === "object" && error !== null && "code" in error && "walletId" in error) {
-    const err = error as { code: unknown; walletId: unknown };
-    return {
-      code: String(err.code),
-      context: { walletId: String(err.walletId) } as ErrorContext,
+      context,
     };
   }
 
@@ -192,27 +278,6 @@ function extractCodeAndContext(error: unknown): { code: string; context: ErrorCo
  *
  * @returns A {@link UserFriendlyError} with both a human-readable message and
  *          the original technical details.
- *
- * @example
- * ```ts
- * import { toUserFriendlyError, ContractExecutionError, ContractErrorCode } from "@zk-payroll/core";
- *
- * try {
- *   await contract.someMethod();
- * } catch (err) {
- *   const result = toUserFriendlyError(err);
- *   console.log(result.friendlyMessage); // "The transaction could not be simulated..."
- *   console.log(result.code);            // "SIMULATION_FAILED"
- *   console.log(result.context);         // { transactionId, contractId, ... }
- * }
- * ```
- *
- * **Customising messages:**
- * ```ts
- * const result = toUserFriendlyError(err, {
- *   SIMULATION_FAILED: "Custom simulation message",
- * });
- * ```
  */
 export function toUserFriendlyError(
   error: unknown,
@@ -228,10 +293,6 @@ export function toUserFriendlyError(
   return { friendlyMessage, code, context, originalError: error };
 }
 
-export function mapRpcError(error: unknown, context: ErrorContext = {}): ContractExecutionError {
-  if (error instanceof ContractExecutionError) {
-    return error;
-  }
 // ── Error Mapping Utility ───────────────────────────────────────────────────
 
 /**
@@ -244,12 +305,41 @@ export function mapRpcError(
   if (error instanceof ContractExecutionError) return error;
 
   const msg = error instanceof Error ? error.message : String(error);
+  const cause = error;
+
+  if (/transaction.*timeout|timeout.*transaction/i.test(msg)) {
+    return new ContractExecutionError(
+      `Transaction timed out: ${msg}`,
+      ContractErrorCode.TRANSACTION_TIMEOUT,
+      context,
+      cause
+    );
+  }
+
+  if (/timeout|expired|econnaborted|etimedout/i.test(msg)) {
+    return new RpcTimeoutError(
+      `RPC request timed out: ${msg}`,
+      context,
+      cause,
+      ContractErrorCode.RPC_TIMEOUT
+    );
+  }
+
+  if (/invalid|malformed|unexpected response|parse error|bad response/i.test(msg)) {
+    return new InvalidResponseError(
+      `Invalid RPC response: ${msg}`,
+      context,
+      cause,
+      ContractErrorCode.INVALID_RESPONSE
+    );
+  }
 
   if (/simulate/i.test(msg)) {
     return new ContractExecutionError(
       `Simulation failed: ${msg}`,
       ContractErrorCode.SIMULATION_FAILED,
-      context
+      context,
+      cause
     );
   }
 
@@ -257,15 +347,8 @@ export function mapRpcError(
     return new ContractExecutionError(
       `Insufficient fee: ${msg}`,
       ContractErrorCode.INSUFFICIENT_FEE,
-      context
-    );
-  }
-
-  if (/timeout|expired/i.test(msg)) {
-    return new ContractExecutionError(
-      `Transaction timed out: ${msg}`,
-      ContractErrorCode.TRANSACTION_TIMEOUT,
-      context
+      context,
+      cause
     );
   }
 
@@ -273,7 +356,8 @@ export function mapRpcError(
     return new ContractExecutionError(
       `Contract reverted: ${msg}`,
       ContractErrorCode.CONTRACT_REVERT,
-      context
+      context,
+      cause
     );
   }
 
@@ -281,13 +365,15 @@ export function mapRpcError(
     return new ContractExecutionError(
       `Transaction submission failed: ${msg}`,
       ContractErrorCode.TRANSACTION_SUBMISSION_FAILED,
-      context
+      context,
+      cause
     );
   }
 
   return new ContractExecutionError(
     `Unknown RPC error: ${msg}`,
     ContractErrorCode.UNKNOWN_RPC_ERROR,
-    context
+    context,
+    cause
   );
 }

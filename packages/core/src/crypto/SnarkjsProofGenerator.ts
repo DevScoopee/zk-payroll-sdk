@@ -1,4 +1,6 @@
 import { groth16 } from "snarkjs";
+import axios from "axios";
+import * as fs from "fs";
 import { CacheProvider } from "../cache/CacheProvider";
 import { PayrollError } from "../errors";
 import {
@@ -40,16 +42,28 @@ export class SnarkjsProofGenerator implements IPreloadableProofGenerator {
   private wasmFetchPromise?: Promise<ArrayBuffer>;
   private zkeyFetchPromise?: Promise<Uint8Array>;
   private preloadStatus: PreloadStatus = { wasmLoaded: false, zkeyLoaded: false };
-  private readonly resolver: IArtifactResolver;
 
+  private readonly config: ProofGeneratorConfig;
   private readonly dedup: IdempotencyRegistry<ProofPayload>;
   private readonly semaphore: Semaphore;
 
   constructor(
-    private readonly config: ProofGeneratorConfig,
+    config: ProofGeneratorConfig,
     private readonly cache?: CacheProvider<string>,
     private readonly logger?: SdkLogger
   ) {
+    const wasmUrl = config.wasmSource
+      ? (config.wasmSource.type === "local" ? config.wasmSource.path : config.wasmSource.url)
+      : config.wasmUrl!;
+    const zkeyUrl = config.zkeySource
+      ? (config.zkeySource.type === "local" ? config.zkeySource.path : config.zkeySource.url)
+      : config.zkeyUrl!;
+
+    this.config = {
+      ...config,
+      wasmUrl,
+      zkeyUrl,
+    };
     const permits = config.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY;
     this.semaphore = new Semaphore(permits);
     this.dedup = new IdempotencyRegistry<ProofPayload>(0);
@@ -81,15 +95,14 @@ export class SnarkjsProofGenerator implements IPreloadableProofGenerator {
         500
       );
     }
-  }  /**
+  }
+
+  /**
    * The actual proof-generation work, gated by the dedup registry AND
    * the semaphore. Re-checks the user cache first so a recently-populated
    * entry from a sibling caller is returned without re-running snarkjs.
    */
   private async computeProof(witness: Record<string, unknown>): Promise<ProofPayload> {
-    // Re-derive the key inside the gated block so that a sibling caller
-    // (sharing the same dedup entry) cannot mutate the witness between
-    // the cache check and the actual proof call.
     const key = witnessKey(witness);
 
     if (this.cache) {
@@ -166,22 +179,36 @@ export class SnarkjsProofGenerator implements IPreloadableProofGenerator {
     return this.wasmFetchPromise;
   }
 
-  private async downloadWasm(): Promise<ArrayBuffer> {
-    try {
-      const response = await axios.get<ArrayBuffer>(this.config.wasmUrl, {
-        responseType: "arraybuffer",
-        timeout: 30000,
-      });
-    }
-    return this.resolvePromise;
+  private isRemoteUrl(url: string): boolean {
+    return typeof url === "string" && /^https?:\/\//i.test(url);
   }
 
-  private async fetchWasm(): Promise<ArrayBuffer> {
-    if (this.wasmCache) {
+  private async downloadWasm(): Promise<ArrayBuffer> {
+    try {
+      if (this.isRemoteUrl(this.config.wasmUrl)) {
+        const response = await axios.get<ArrayBuffer>(this.config.wasmUrl, {
+          responseType: "arraybuffer",
+          timeout: 30000,
+        });
+        this.wasmCache = response.data;
+      } else {
+        const buffer = await fs.promises.readFile(this.config.wasmUrl);
+        const ab = new ArrayBuffer(buffer.byteLength);
+        new Uint8Array(ab).set(buffer);
+        this.wasmCache = ab;
+      }
+
+      this.preloadStatus = { ...this.preloadStatus, wasmLoaded: true };
+      this.logger?.info("artifact_fetch_complete", { type: "wasm" });
       return this.wasmCache;
+    } catch (error) {
+      throw new PayrollError(
+        `Failed to fetch wasm artifact from ${this.config.wasmUrl}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        500
+      );
     }
-    const resolved = await this.ensureResolved();
-    return resolved.wasm;
   }
 
   /**
@@ -206,18 +233,23 @@ export class SnarkjsProofGenerator implements IPreloadableProofGenerator {
 
   private async downloadZkey(): Promise<Uint8Array> {
     try {
-      const response = await axios.get<ArrayBuffer>(this.config.zkeyUrl, {
-        responseType: "arraybuffer",
-        timeout: 60000,
-      });
+      if (this.isRemoteUrl(this.config.zkeyUrl)) {
+        const response = await axios.get<ArrayBuffer>(this.config.zkeyUrl, {
+          responseType: "arraybuffer",
+          timeout: 60000,
+        });
+        this.zkeyCache = new Uint8Array(response.data);
+      } else {
+        const buffer = await fs.promises.readFile(this.config.zkeyUrl);
+        this.zkeyCache = new Uint8Array(buffer);
+      }
 
-      this.zkeyCache = new Uint8Array(response.data);
       this.preloadStatus = { ...this.preloadStatus, zkeyLoaded: true };
       this.logger?.info("artifact_fetch_complete", { type: "zkey" });
       return this.zkeyCache;
     } catch (error) {
       throw new PayrollError(
-        `Failed to fetch .zkey file from ${this.config.zkeyUrl}: ${
+        `Failed to fetch zkey artifact from ${this.config.zkeyUrl}: ${
           error instanceof Error ? error.message : String(error)
         }`,
         500

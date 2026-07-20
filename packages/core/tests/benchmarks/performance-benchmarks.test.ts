@@ -241,7 +241,7 @@ async function simulateDraftCreation(): Promise<void> {
     };
 
     drafts.push(draft);
-    JSON.stringify(draft); // Serialize for transmission
+    JSON.stringify(draft, (_, v) => (typeof v === "bigint" ? v.toString() : v)); // Serialize for transmission
   }
 }
 
@@ -284,7 +284,7 @@ async function simulateSubmissionAggregation(): Promise<void> {
     amount,
   }));
 
-  JSON.stringify(payload); // Serialize for RPC
+  JSON.stringify(payload, (_, v) => (typeof v === "bigint" ? v.toString() : v)); // Serialize for RPC
 }
 
 /**

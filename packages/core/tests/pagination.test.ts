@@ -122,7 +122,7 @@ describe("paginate — offset-based", () => {
   });
 
   it("returns a partial last page", () => {
-    const result = paginate(recor{ page: 3, pageSize: 20 });
+    const result = paginate(records, { page: 3, pageSize: 20 });
     expect(result.data).toHaveLength(15); // 55 - 40
     expect(result.meta.hasNextPage).toBe(false);
   });
@@ -153,7 +153,7 @@ describe("paginate — offset-based", () => {
 // paginate — cursor-based
 // ---------------------------------------------------------------------------
 
-descbe("paginate — cursor-based", () => {
+describe("paginate — cursor-based", () => {
   const records = makePayrollRecords(50);
 
   it("first page produces a nextCursor", () => {
@@ -188,7 +188,7 @@ descbe("paginate — cursor-based", () => {
   });
 
   it("last cursor-page has no nextCursor", () => {
-    const page1 = paginate(records, pageSize: 50 });
+    const page1 = paginate(records, { pageSize: 50 });
     expect(page1.meta.nextCursor).toBeUndefined();
   });
 
@@ -431,7 +431,7 @@ describe("paging boundary conditions", () => {
     const p2 = paginate(records, { pageSize: 1, cursor: p1.meta.nextCursor });
     const p3 = paginate(records, { pageSize: 1, cursor: p2.meta.nextCursor });
     expect(p1.data[0].id).toBe("rec-0");
-    expect(p2.data[0].id).toBe("c-1");
+    expect(p2.data[0].id).toBe("rec-1");
     expect(p3.data[0].id).toBe("rec-2");
     expect(p3.meta.hasNextPage).toBe(false);
   });

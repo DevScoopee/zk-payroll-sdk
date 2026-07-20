@@ -1,7 +1,9 @@
-import { rpc, Contract, TransactionBuilder, Networks, BASE_FEE, xdr } from "@stellar/stellar-sdk";
+import { rpc, Contract, TransactionBuilder, Networks, BASE_FEE, xdr, Keypair } from "@stellar/stellar-sdk";
 import type { ISigner } from "../signer/types";
-import { ContractExecutionError, ContractErrorCode, mapRpcError } from "../errors";
+import { toISigner } from "../signer/KeypairSigner";
+import { ContractExecutionError, ContractErrorCode, mapRpcError, RpcTimeoutError } from "../errors";
 import { RunIdentifier } from "../core/run-identifier";
+import { withRetry } from "../core/retry";
 
 /** How long (ms) to wait between transaction status polls */
 const POLL_INTERVAL_MS = 2_000;
@@ -31,7 +33,6 @@ export interface InvokeOptions {
 
 export abstract class BaseContractWrapper {
   protected readonly contract: Contract;
-  private readonly submissionIdempotency = new IdempotencyRegistry<xdr.ScVal>();
 
   constructor(
     protected readonly server: rpc.Server,
@@ -45,30 +46,31 @@ export abstract class BaseContractWrapper {
    *
    * Generates a deterministic request ID from the method name when none
    * is provided, enabling correlation across submission and polling flows.
-   * Pass an explicit `requestId` if you need to group operations under a
-   * shared identifier (e.g., from `RunIdentifier.generateCorrelationId()`).
+   * Pass an explicit `requestId` or `InvokeOptions` if you need to group operations.
    *
    * @param method     - Name of the contract function to call
    * @param args       - XDR-encoded arguments (use `nativeToScVal` from stellar-sdk)
-   * @param signer     - Keypair that signs the transaction
+   * @param signer     - Signer that signs the transaction (Keypair or ISigner)
    * @param network    - Stellar network passphrase (defaults to testnet)
-   * @param requestId  - Optional request ID for correlation tracing.
-   *                     Auto-generated from `method` if omitted.
+   * @param options    - Optional request ID string or InvokeOptions object for correlation tracing.
    * @returns          - The decoded XDR result value
    * @throws           - `ContractExecutionError` on any RPC or contract failure
    */
   protected async invoke(
     method: string,
     args: xdr.ScVal[],
-    signer: Keypair,
+    signer: Keypair | ISigner,
     network: string = Networks.TESTNET,
-    requestId?: string
+    options?: string | InvokeOptions
   ): Promise<xdr.ScVal> {
+    const requestId = typeof options === "string" ? options : undefined;
     const reqId = requestId ?? RunIdentifier.generateRequestId(method);
+    const iSigner = toISigner(signer);
 
     try {
       // ── 1. Load the source account ─────────────────────────────────────
-      const pubKey = await signer.getPublicKey();
+      const pubKey = await iSigner.getPublicKey();
+
       const account = await withRetry(() => this.server.getAccount(pubKey), {
         attempts: 3,
         delayMs: 100,
@@ -100,7 +102,7 @@ export abstract class BaseContractWrapper {
       // ── 4. Assemble: attach footprint and authorisation from simulation ─
       const preparedTx = rpc.assembleTransaction(rawTx, simResult).build();
 
-      await signer.sign(preparedTx);
+      await iSigner.sign(preparedTx);
 
       // ── 5. Submit ──────────────────────────────────────────────────────
       const sendResult = await withRetry(() => this.server.sendTransaction(preparedTx), {
@@ -125,12 +127,6 @@ export abstract class BaseContractWrapper {
       if (err instanceof ContractExecutionError) throw err;
       throw mapRpcError(err, { requestId: reqId });
     }
-
-    return this.submissionIdempotency.execute(
-      `${this.contractId}:${method}:${idempotencyKey}`,
-      runInvocation,
-      { cacheErrors: false }
-    );
   }
 
   // ── Private helpers ──────────────────────────────────────────────────────
@@ -171,10 +167,11 @@ export abstract class BaseContractWrapper {
       // Status is NOT_FOUND or still pending — keep polling
     }
 
-    throw new ContractExecutionError(
+    throw new RpcTimeoutError(
       `Transaction timed out after ${MAX_POLLS} polls for "${method}" (hash: ${txHash})`,
-      ContractErrorCode.TRANSACTION_TIMEOUT,
-      { requestId }
+      { requestId },
+      undefined,
+      ContractErrorCode.TRANSACTION_TIMEOUT
     );
   }
 }

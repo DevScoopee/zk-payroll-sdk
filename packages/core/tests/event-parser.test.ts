@@ -1,4 +1,4 @@
-import { xdr, nativeToScVal, Address, StrKey } from "@stellar/stellar-sdk";
+import { xdr, nativeToScVal, Address, StrKey, Keypair } from "@stellar/stellar-sdk";
 import {
   parseContractEvent,
   parseContractEvents,
@@ -7,10 +7,10 @@ import {
 } from "../src/event-parser";
 
 const TEST_CONTRACT_ID = StrKey.encodeContract(Buffer.alloc(32, 1));
-const TEST_EMPLOYER = "GBAOQHHA5HX4JQ4C5V6Z5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5";
-const TEST_EMPLOYEE = "GBAOQHHA5HX4JQ4C5V6Z5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q6";
+const TEST_EMPLOYER = Keypair.random().publicKey();
+const TEST_EMPLOYEE = Keypair.random().publicKey();
 const TEST_TOKEN_ID = StrKey.encodeContract(Buffer.alloc(32, 2));
-const TEST_RECIPIENT = "GBAOQHHA5HX4JQ4C5V6Z5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q7";
+const TEST_RECIPIENT = Keypair.random().publicKey();
 
 function makeEventScValMap(entries: Record<string, xdr.ScVal>): xdr.ScVal {
   return xdr.ScVal.scvMap(

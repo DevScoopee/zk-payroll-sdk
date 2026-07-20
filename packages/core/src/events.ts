@@ -1,7 +1,7 @@
 import { rpc } from "@stellar/stellar-sdk";
 import { EventEmitter } from "events";
 import { ContractExecutionError, ContractErrorCode } from "./errors";
-import { withRetry } from "./core";
+import { withRetry } from "./core/retry";
 
 /** Default polling interval in milliseconds */
 const DEFAULT_POLL_INTERVAL_MS = 2_000;
@@ -16,6 +16,8 @@ export interface ConfirmationOptions {
   pollIntervalMs?: number;
   /** Maximum polling attempts before timeout (default: 15) */
   maxPolls?: number;
+  /** Optional AbortSignal to cancel polling */
+  signal?: AbortSignal;
   /**
    * Optional request ID for correlating submission and polling flows.
    * Use `RunIdentifier.generateRequestId()` to create a deterministic

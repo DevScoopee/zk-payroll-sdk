@@ -6,13 +6,16 @@ The ZK Payroll SDK normalizes all underlying network, contract, wallet, and proo
 
 All SDK errors inherit from the base `ZkPayrollError` class.
 
-- `ZkPayrollError` (Base)
-  - `NetworkError` - RPC connection failures, timeouts, and unexpected HTTP responses.
+- `ZkPayrollError` (Base — includes `cause?: unknown` for underlying error preservation)
+  - `WalletError` - Wallet interaction failures
+    - `WalletRejectionError` - User explicitly declined a connection or signing request in their wallet
   - `ContractExecutionError` - On-chain simulation failures, reverts, insufficient fees, or rejected submissions.
+    - `RpcTimeoutError` - RPC request or transaction submission didn't resolve in time (`RPC_TIMEOUT` or `TRANSACTION_TIMEOUT`)
+    - `InvalidResponseError` - RPC returned malformed or unexpected payload structure (`INVALID_RESPONSE`)
+  - `NetworkError` - Connection failures and unexpected HTTP responses.
   - `ProofGenerationError` - Failures related to circuit artifact downloading, caching, or witness calculation.
-  - `WalletError` - Wallet connection, network mismatch, or user-rejected signing requests.
-  - `SerializationError` - Failures during importing or exporting of payroll drafts (e.g., checksum mismatch, invalid JSON).
-  - `ValidationError` - Client-side validation errors (e.g., invalid amounts or malformed addresses).
+  - `SerializationError` - Failures during importing or exporting of payroll drafts.
+  - `ValidationError` - Client-side validation errors.
 
 *(Note: `PayrollError` is deprecated and acts as a backward-compatibility alias for `ZkPayrollError`)*
 
@@ -20,8 +23,25 @@ All SDK errors inherit from the base `ZkPayrollError` class.
 
 Every `ZkPayrollError` exposes:
 1. `message`: A human-readable description of the failure.
-2. `code`: A string or numeric code classifying the failure (e.g., `TRANSACTION_TIMEOUT`, `WALLET_SIGNING_REJECTED`).
-3. `context`: A key-value record containing metadata relevant to the failure (e.g., the transaction hash, the failing field, or the RPC response).
+2. `code`: A string or numeric code classifying the failure (e.g., `RPC_TIMEOUT`, `INVALID_RESPONSE`, `WALLET_SIGNING_REJECTED`).
+3. `context`: A key-value record containing metadata relevant to the failure (e.g., `requestId`, transaction hash, or failing parameter).
+4. `cause`: The underlying raw error, `AxiosError`, or wallet exception that caused the SDK error.
+
+## User-Friendly UI Mapping
+
+Use `toUserFriendlyError(error)` to map any SDK or unknown error into a clean, human-readable format suitable for UI toasts and diagnostic logs:
+
+```typescript
+import { toUserFriendlyError } from "@zk-payroll/sdk";
+
+try {
+  await service.processPayment(params);
+} catch (error) {
+  const { userMessage, technicalDetail, code } = toUserFriendlyError(error);
+  showToastNotification(userMessage); // e.g. "Wallet request declined."
+  logDiagnostic(code, technicalDetail);
+}
+```
 
 ## Handling Errors and Recovery Patterns
 

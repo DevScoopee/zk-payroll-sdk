@@ -21,12 +21,25 @@ export {
   NetworkError,
   ProofGenerationError,
   ContractExecutionError,
+  RpcTimeoutError,
+  InvalidResponseError,
   ValidationError,
   ContractErrorCode,
+  WalletError,
+  WalletRejectionError,
+  WalletErrorCode,
+  toUserFriendlyError,
+  DEFAULT_ERROR_MESSAGES,
   mapRpcError,
   PayrollError,
 } from "./errors";
-export type { ErrorContext, ContractErrorCodeType } from "./errors";
+export type {
+  ErrorContext,
+  ContractErrorCodeType,
+  WalletErrorCodeType,
+  UserFriendlyError,
+  ErrorMessageOverrides,
+} from "./errors";
 export { DEFAULT_CONFIG } from "./config";
 export * from "./cache";
 export * from "./types";
