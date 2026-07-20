@@ -10,6 +10,8 @@ import {
   ProofStruct,
 } from "./types";
 
+import { BatchValidationFailedError, BatchValidationError } from "../batch/BatchPayloadBuilder";
+
 export class SalaryCommitmentClient extends BaseContractWrapper {
   private readonly networkPassphrase: string;
 
@@ -65,6 +67,44 @@ export class SalaryCommitmentClient extends BaseContractWrapper {
     signer: Keypair | ISigner,
     network?: string
   ): Promise<void> {
+    const errors: BatchValidationError[] = [];
+    if (!commitments || commitments.length === 0) {
+      errors.push({
+        code: "EMPTY_BATCH",
+        message: "Batch commitments array cannot be empty",
+        field: "commitments",
+      });
+      throw new BatchValidationFailedError(errors);
+    }
+
+    const seenEmployees = new Map<string, number>();
+    for (let i = 0; i < commitments.length; i++) {
+      const item = commitments[i];
+      if (!item.employee || item.employee.trim() === "") {
+        errors.push({
+          code: "INVALID_RECIPIENT",
+          message: "Employee address is required",
+          field: "employee",
+          index: i,
+        });
+      } else {
+        const prevIdx = seenEmployees.get(item.employee);
+        if (prevIdx !== undefined) {
+          errors.push({
+            code: "DUPLICATE_RECIPIENT",
+            message: `Duplicate employee recipient at indices ${prevIdx} and ${i}`,
+            field: "employee",
+            index: i,
+          });
+        } else {
+          seenEmployees.set(item.employee, i);
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new BatchValidationFailedError(errors);
+    }
     const commitVec = xdr.ScVal.scvVec(
       commitments.map((item) => {
         const hash = item.commitmentHash;

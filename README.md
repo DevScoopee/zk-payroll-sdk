@@ -218,6 +218,29 @@ const isValid = await client.verifyCommitment("G...", "G...", 1n, proof, signer)
 await client.revealSalary("G...", "G...", 1n, 1000n, signer);
 ```
 
+## Batch Payload Validation
+
+The SDK automatically validates batch payroll payloads before submitting them to contracts, preventing empty batches, duplicate recipients, and invalid amounts:
+
+```typescript
+import { BatchPayloadBuilder, validateBatchPayload, PayrollValidation } from "@zk-payroll/sdk";
+
+const entries = [
+  { recipient: "GABC...", amount: 1000n, asset: "native" },
+  { recipient: "GDEF...", amount: 2000n, asset: "native" },
+];
+
+// Validate entries before building
+const errors = validateBatchPayload(entries);
+if (errors.length === 0) {
+  const payload = new BatchPayloadBuilder().addMany(entries).build();
+  // Safe to submit payload.entries
+} else {
+  // Structured errors returned for UI display (code, message, field, index)
+  console.log(errors);
+}
+```
+
 ### ProofVerifierClient
 
 ```typescript

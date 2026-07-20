@@ -162,6 +162,33 @@ export class PayrollService {
     return transactions.filter((t) => t.amount > criteria.minAmount);
   }
 
+  /**
+   * Validate a batch payroll payload locally before processing.
+   * Returns structured validation errors or empty array if valid.
+   */
+  validateBatch(entries: any[]): any[] {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { PayrollValidation } = require("./core/validation");
+    return PayrollValidation.validateBatchPayload(entries);
+  }
+
+  /**
+   * Process a batch of private payroll payments.
+   * Validates all batch payment entries first; rejects invalid payloads before submission.
+   */
+  async processBatchPayments(entries: any[]): Promise<PaymentResult[]> {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { PayrollValidation } = require("./core/validation");
+    const payload = PayrollValidation.assertValidBatchPayload(entries);
+
+    const results: PaymentResult[] = [];
+    for (const entry of payload.entries) {
+      const res = await this.processPayment(entry);
+      results.push(res);
+    }
+    return results;
+  }
+
   private validatePaymentParams(params: PaymentParams): void {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { PayrollValidation } = require("./core/validation");
