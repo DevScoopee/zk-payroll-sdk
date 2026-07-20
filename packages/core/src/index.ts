@@ -63,6 +63,7 @@ export * from "./testing";
 // ── Events ──────────────────────────────────────────────────────────────────
 export { TransactionWatcher } from "./events";
 export type { ConfirmationOptions, ConfirmationResult } from "./events";
+export * from "./polling";
 
 // ── Pagination Helpers ───────────────────────────────────────────────────────
 export * from "./pagination";
