@@ -13,6 +13,7 @@ import {
 import { SdkLogger } from "../logging/SdkLogger";
 import { Semaphore } from "../core/concurrency";
 import { IdempotencyRegistry } from "../core/idempotency";
+import { validateProofConfig } from "./configValidation";
 
 /**
  * Default max concurrency for `groth16.fullProve`. The snarkjs call is
@@ -52,6 +53,8 @@ export class SnarkjsProofGenerator implements IPreloadableProofGenerator {
     private readonly cache?: CacheProvider<string>,
     private readonly logger?: SdkLogger
   ) {
+    validateProofConfig(config);
+
     const wasmUrl = config.wasmSource
       ? (config.wasmSource.type === "local" ? config.wasmSource.path : config.wasmSource.url)
       : config.wasmUrl!;
