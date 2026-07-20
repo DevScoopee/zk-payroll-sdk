@@ -4,6 +4,7 @@ import { PayrollError } from "../errors";
 import { IdempotencyRegistry } from "../core/idempotency";
 
 import { PayrollProgressCallback, PayrollProgressEvent, PayrollProgressStage } from "../progress";
+import { validateProofConfig } from "./configValidation";
 
 /**
  * Options for WorkerProofGenerator.
@@ -103,6 +104,7 @@ export class WorkerProofGenerator implements IProofGenerator {
     private readonly config: ProofGeneratorConfig,
     private readonly options: WorkerProofOptions = {}
   ) {
+    validateProofConfig(config);
     this.dedupEnabled = options.dedupSameWitness !== false;
     this.dedup = new IdempotencyRegistry<ProofPayload>(0);
     this.messageHandler = this.onMessage.bind(this);
