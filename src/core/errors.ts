@@ -132,11 +132,67 @@ export const ContractErrorCode = {
 export type ContractErrorCodeType =
   (typeof ContractErrorCode)[keyof typeof ContractErrorCode];
 
+export const TimeoutFailureState = {
+  RETRYABLE: "RETRYABLE",
+  EXPIRED: "EXPIRED",
+  UNKNOWN: "UNKNOWN",
+  TERMINAL: "TERMINAL",
+} as const;
+
+export type TimeoutFailureStateType =
+  (typeof TimeoutFailureState)[keyof typeof TimeoutFailureState];
+
+export function classifyContractErrorCode(code: ContractErrorCodeType): TimeoutFailureStateType {
+  switch (code) {
+    case ContractErrorCode.TRANSACTION_TIMEOUT:
+      return TimeoutFailureState.EXPIRED;
+    case ContractErrorCode.SIMULATION_FAILED:
+    case ContractErrorCode.CONTRACT_REVERT:
+      return TimeoutFailureState.TERMINAL;
+    case ContractErrorCode.INSUFFICIENT_FEE:
+    case ContractErrorCode.TRANSACTION_SUBMISSION_FAILED:
+    case ContractErrorCode.RPC_TIMEOUT:
+    case ContractErrorCode.INVALID_RESPONSE:
+      return TimeoutFailureState.RETRYABLE;
+    case ContractErrorCode.UNKNOWN_RPC_ERROR:
+    default:
+      return TimeoutFailureState.UNKNOWN;
+  }
+}
+
+export function classifyTimeoutFailure(error: unknown): TimeoutFailureStateType {
+  if (error instanceof ContractExecutionError) {
+    return error.failureState;
+  }
+
+  const msg = error instanceof Error ? error.message : String(error);
+
+  if (
+    /econnrefused|econnreset|enetunreach|etimedout|eai_again|network.*error|fetch.*failed|request.*failed|socket/i.test(
+      msg
+    )
+  ) {
+    return TimeoutFailureState.RETRYABLE;
+  }
+
+  if (/txn.*timeout|tx.*expired|ledger.*seq|too.*old|stale/i.test(msg)) {
+    return TimeoutFailureState.EXPIRED;
+  }
+
+  if (/revert|trap|wasm|simulation.*fail|unauthorized/i.test(msg)) {
+    return TimeoutFailureState.TERMINAL;
+  }
+
+  return TimeoutFailureState.UNKNOWN;
+}
+
 /**
  * Thrown when a Soroban contract call fails (simulation, submission,
  * timeout, or on-chain revert).
  */
 export class ContractExecutionError extends ZkPayrollError {
+  public readonly failureState: TimeoutFailureStateType;
+
   constructor(
     message: string,
     code: ContractErrorCodeType = ContractErrorCode.UNKNOWN_RPC_ERROR,
@@ -144,6 +200,7 @@ export class ContractExecutionError extends ZkPayrollError {
     cause?: unknown
   ) {
     super(message, code, context, cause);
+    this.failureState = classifyContractErrorCode(code);
   }
 }
 

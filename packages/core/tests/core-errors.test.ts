@@ -7,6 +7,9 @@ import {
   ContractErrorCode,
   mapRpcError,
   toUserFriendlyError,
+  TimeoutFailureState,
+  classifyContractErrorCode,
+  classifyTimeoutFailure,
 } from "../src/errors";
 import { PayrollError } from "../src/errors";
 
@@ -314,6 +317,156 @@ describe("Core Error Classes", () => {
       const unknown = { code: "NO_SUCH_CODE", context: {} };
       const result = toUserFriendlyError(unknown);
       expect(result.friendlyMessage).toBeTruthy();
+    });
+  });
+
+  describe("TimeoutFailureState", () => {
+    it("defines all four states", () => {
+      expect(TimeoutFailureState.RETRYABLE).toBe("RETRYABLE");
+      expect(TimeoutFailureState.EXPIRED).toBe("EXPIRED");
+      expect(TimeoutFailureState.UNKNOWN).toBe("UNKNOWN");
+      expect(TimeoutFailureState.TERMINAL).toBe("TERMINAL");
+    });
+  });
+
+  describe("classifyContractErrorCode", () => {
+    it("classifies TRANSACTION_TIMEOUT as EXPIRED", () => {
+      expect(classifyContractErrorCode(ContractErrorCode.TRANSACTION_TIMEOUT)).toBe(
+        TimeoutFailureState.EXPIRED
+      );
+    });
+
+    it("classifies SIMULATION_FAILED as TERMINAL", () => {
+      expect(classifyContractErrorCode(ContractErrorCode.SIMULATION_FAILED)).toBe(
+        TimeoutFailureState.TERMINAL
+      );
+    });
+
+    it("classifies CONTRACT_REVERT as TERMINAL", () => {
+      expect(classifyContractErrorCode(ContractErrorCode.CONTRACT_REVERT)).toBe(
+        TimeoutFailureState.TERMINAL
+      );
+    });
+
+    it("classifies INSUFFICIENT_FEE as RETRYABLE", () => {
+      expect(classifyContractErrorCode(ContractErrorCode.INSUFFICIENT_FEE)).toBe(
+        TimeoutFailureState.RETRYABLE
+      );
+    });
+
+    it("classifies TRANSACTION_SUBMISSION_FAILED as RETRYABLE", () => {
+      expect(classifyContractErrorCode(ContractErrorCode.TRANSACTION_SUBMISSION_FAILED)).toBe(
+        TimeoutFailureState.RETRYABLE
+      );
+    });
+
+    it("classifies RPC_TIMEOUT as RETRYABLE", () => {
+      expect(classifyContractErrorCode(ContractErrorCode.RPC_TIMEOUT)).toBe(
+        TimeoutFailureState.RETRYABLE
+      );
+    });
+
+    it("classifies INVALID_RESPONSE as RETRYABLE", () => {
+      expect(classifyContractErrorCode(ContractErrorCode.INVALID_RESPONSE)).toBe(
+        TimeoutFailureState.RETRYABLE
+      );
+    });
+
+    it("classifies UNKNOWN_RPC_ERROR as UNKNOWN", () => {
+      expect(classifyContractErrorCode(ContractErrorCode.UNKNOWN_RPC_ERROR)).toBe(
+        TimeoutFailureState.UNKNOWN
+      );
+    });
+  });
+
+  describe("classifyTimeoutFailure", () => {
+    it("classifies ContractExecutionError by its failureState", () => {
+      const err = new ContractExecutionError("msg", ContractErrorCode.TRANSACTION_TIMEOUT);
+      expect(classifyTimeoutFailure(err)).toBe(TimeoutFailureState.EXPIRED);
+    });
+
+    it("classifies network-level errors as RETRYABLE", () => {
+      const networkErrors = [
+        "econnrefused",
+        "econnreset",
+        "enetunreach",
+        "etimedout",
+        "network error",
+        "fetch failed",
+        "request failed",
+        "socket hang up",
+      ];
+      for (const msg of networkErrors) {
+        expect(classifyTimeoutFailure(new Error(msg))).toBe(TimeoutFailureState.RETRYABLE);
+      }
+    });
+
+    it("classifies ledger expiry errors as EXPIRED", () => {
+      const expiryErrors = ["txn timeout", "tx expired", "ledger seq too old", "stale transaction"];
+      for (const msg of expiryErrors) {
+        expect(classifyTimeoutFailure(new Error(msg))).toBe(TimeoutFailureState.EXPIRED);
+      }
+    });
+
+    it("classifies terminal contract errors as TERMINAL", () => {
+      const terminalErrors = ["contract revert", "wasm trap", "simulation fail", "unauthorized"];
+      for (const msg of terminalErrors) {
+        expect(classifyTimeoutFailure(new Error(msg))).toBe(TimeoutFailureState.TERMINAL);
+      }
+    });
+
+    it("classifies unrecognized errors as UNKNOWN", () => {
+      expect(classifyTimeoutFailure(new Error("weird internal error"))).toBe(
+        TimeoutFailureState.UNKNOWN
+      );
+    });
+
+    it("handles non-Error input", () => {
+      expect(classifyTimeoutFailure("string error")).toBe(TimeoutFailureState.UNKNOWN);
+      expect(classifyTimeoutFailure(null)).toBe(TimeoutFailureState.UNKNOWN);
+      expect(classifyTimeoutFailure(42)).toBe(TimeoutFailureState.UNKNOWN);
+    });
+  });
+
+  describe("ContractExecutionError.failureState", () => {
+    it("auto-classifies SIMULATION_FAILED as TERMINAL", () => {
+      const err = new ContractExecutionError("sim failed", ContractErrorCode.SIMULATION_FAILED);
+      expect(err.failureState).toBe(TimeoutFailureState.TERMINAL);
+    });
+
+    it("auto-classifies TRANSACTION_TIMEOUT as EXPIRED", () => {
+      const err = new ContractExecutionError("timed out", ContractErrorCode.TRANSACTION_TIMEOUT);
+      expect(err.failureState).toBe(TimeoutFailureState.EXPIRED);
+    });
+
+    it("auto-classifies INSUFFICIENT_FEE as RETRYABLE", () => {
+      const err = new ContractExecutionError("fee too low", ContractErrorCode.INSUFFICIENT_FEE);
+      expect(err.failureState).toBe(TimeoutFailureState.RETRYABLE);
+    });
+
+    it("auto-classifies CONTRACT_REVERT as TERMINAL", () => {
+      const err = new ContractExecutionError("reverted", ContractErrorCode.CONTRACT_REVERT);
+      expect(err.failureState).toBe(TimeoutFailureState.TERMINAL);
+    });
+
+    it("auto-classifies TRANSACTION_SUBMISSION_FAILED as RETRYABLE", () => {
+      const err = new ContractExecutionError("submission failed", ContractErrorCode.TRANSACTION_SUBMISSION_FAILED);
+      expect(err.failureState).toBe(TimeoutFailureState.RETRYABLE);
+    });
+
+    it("auto-classifies RPC_TIMEOUT as RETRYABLE", () => {
+      const err = new ContractExecutionError("rpc timeout", ContractErrorCode.RPC_TIMEOUT);
+      expect(err.failureState).toBe(TimeoutFailureState.RETRYABLE);
+    });
+
+    it("auto-classifies INVALID_RESPONSE as RETRYABLE", () => {
+      const err = new ContractExecutionError("invalid response", ContractErrorCode.INVALID_RESPONSE);
+      expect(err.failureState).toBe(TimeoutFailureState.RETRYABLE);
+    });
+
+    it("defaults UNKNOWN_RPC_ERROR to UNKNOWN", () => {
+      const err = new ContractExecutionError("unknown");
+      expect(err.failureState).toBe(TimeoutFailureState.UNKNOWN);
     });
   });
 });
