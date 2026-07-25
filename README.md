@@ -297,6 +297,31 @@ const isValid = await client.verifyCommitment("G...", "G...", 1n, proof, signer)
 await client.revealSalary("G...", "G...", 1n, 1000n, signer);
 ```
 
+## Payload Normalization
+
+Consumers rarely pass payroll data in exactly one shape (different key names, extra whitespace, comma-formatted amounts, mixed-case addresses). `normalizePayrollPayload` converts any of these variations into the SDK's canonical entry shape before validation, proof preparation, or transaction building:
+
+```typescript
+import { normalizePayrollPayload } from "@zk-payroll/sdk";
+
+const { entries, issues } = normalizePayrollPayload({
+  entries: [
+    { employee_id: "  E-42  ", wallet: "gabc...", asset: "xlm", amount: "1,000.50" },
+  ],
+});
+
+// entries[0] => { employeeId: "E-42", walletAddress: "GABC...", asset: "native", amount: "1000.50", source: {...} }
+
+// Required fields (employeeId, walletAddress, asset, amount) are never silently dropped —
+// missing/unparseable data shows up as an indexed issue instead, with the original
+// input still reachable via entries[issue.index].source.raw for clear validation errors.
+if (issues.length > 0) {
+  console.log(issues);
+}
+```
+
+See the [Payload Normalization Guide](./docs/PAYLOAD_NORMALIZATION.md) for the full field-by-field normalization rules.
+
 ## Batch Payload Validation
 
 The SDK automatically validates batch payroll payloads before submitting them to contracts, preventing empty batches, duplicate recipients, and invalid amounts:
@@ -449,6 +474,7 @@ patterns for tests, and rules for extending the registry in production.
 
 - [Runtime Support Matrix](./docs/SUPPORT_MATRIX.md) - Supported Node.js and browser versions
 - [Browser and Backend Usage](#browser-and-backend-usage) - Where to run the SDK, wallets, proofs, and secrets
+- [Payload Normalization](./docs/PAYLOAD_NORMALIZATION.md) - Canonicalizing payroll payloads before validation
 - [API Reference](./docs/API.md) - Complete API documentation
 - [Error Handling](./docs/ERRORS.md) - Public error hierarchy and recovery patterns
 - [ZK Proof Generation](./docs/ZK_PROOF_GENERATION.md) - Detailed proof generation guide

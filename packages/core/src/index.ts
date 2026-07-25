@@ -107,3 +107,6 @@ export * from "./redaction";
 
 // ── Multi-Asset Metadata ────────────────────────────────────────────────────
 export * from "./assets";
+
+// ── Payload Normalization ───────────────────────────────────────────────────
+export * from "./normalization";
