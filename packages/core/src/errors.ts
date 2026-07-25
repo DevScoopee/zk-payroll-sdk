@@ -13,6 +13,9 @@ export {
   toUserFriendlyError,
   DEFAULT_ERROR_MESSAGES,
   mapRpcError,
+  TimeoutFailureState,
+  classifyContractErrorCode,
+  classifyTimeoutFailure,
 } from "./core/errors";
 export type {
   ErrorContext,
@@ -20,6 +23,7 @@ export type {
   WalletErrorCodeType,
   UserFriendlyError,
   ErrorMessageOverrides,
+  TimeoutFailureStateType,
 } from "./core/errors";
 
 // ── Backward-compatible aliases ─────────────────────────────────────────────
