@@ -110,3 +110,6 @@ export * from "./assets";
 
 // ── Payload Normalization ───────────────────────────────────────────────────
 export * from "./normalization";
+
+// ── Execution Summary ────────────────────────────────────────────────────────
+export * from "./summary";
