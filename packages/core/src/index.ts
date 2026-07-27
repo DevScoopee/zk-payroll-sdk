@@ -29,6 +29,7 @@ export {
   WalletRejectionError,
   WalletErrorCode,
   toUserFriendlyError,
+  formatRedactedError,
   DEFAULT_ERROR_MESSAGES,
   mapRpcError,
   PayrollError,
@@ -38,6 +39,7 @@ export type {
   ContractErrorCodeType,
   WalletErrorCodeType,
   UserFriendlyError,
+  FormattedError,
   ErrorMessageOverrides,
 } from "./errors";
 export { DEFAULT_CONFIG } from "./config";
@@ -69,11 +71,7 @@ export * from "./polling";
 export * from "./pagination";
 
 // ── Event Stream Parser ──────────────────────────────────────────────────────
-export {
-  parseContractEvent,
-  parseContractEvents,
-  EventParsingError,
-} from "./event-parser";
+export { parseContractEvent, parseContractEvents, EventParsingError } from "./event-parser";
 export type {
   RawContractEvent,
   TypedContractEvent,
@@ -119,3 +117,12 @@ export * from "./audit";
 
 // ── Webhook Verification ────────────────────────────────────────────────────
 export * from "./webhooks";
+
+// ── Environment Capability Detector ─────────────────────────────────────────
+export * from "./env";
+
+// ── Fee Estimation Helper ───────────────────────────────────────────────────
+export * from "./fee-estimation";
+
+// ── Transaction Envelope Summarizer ─────────────────────────────────────────
+export * from "./transaction-envelope";
