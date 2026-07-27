@@ -26,8 +26,8 @@
  * ```
  */
 export type ArtifactSource =
-  | { type: "remote"; url: string }
-  | { type: "local"; path: string };
+  | { type: "remote"; url: string; expectedSha256Hash?: string }
+  | { type: "local"; path: string; expectedSha256Hash?: string };
 
 /**
  * The resolved binary content of a pair of circuit artifacts,
