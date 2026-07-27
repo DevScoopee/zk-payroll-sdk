@@ -53,10 +53,14 @@ export class SnarkjsProofGenerator implements IPreloadableProofGenerator {
     private readonly logger?: SdkLogger
   ) {
     const wasmUrl = config.wasmSource
-      ? (config.wasmSource.type === "local" ? config.wasmSource.path : config.wasmSource.url)
+      ? config.wasmSource.type === "local"
+        ? config.wasmSource.path
+        : config.wasmSource.url
       : config.wasmUrl!;
     const zkeyUrl = config.zkeySource
-      ? (config.zkeySource.type === "local" ? config.zkeySource.path : config.zkeySource.url)
+      ? config.zkeySource.type === "local"
+        ? config.zkeySource.path
+        : config.zkeySource.url
       : config.zkeyUrl!;
 
     this.config = {
@@ -89,9 +93,7 @@ export class SnarkjsProofGenerator implements IPreloadableProofGenerator {
         error: error instanceof Error ? error.message : String(error),
       });
       throw new PayrollError(
-        `Proof generation failed: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        `Proof generation failed: ${error instanceof Error ? error.message : String(error)}`,
         500
       );
     }

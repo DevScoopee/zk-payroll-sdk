@@ -43,11 +43,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { IArtifactResolver, ResolvedArtifacts } from "./IArtifactResolver";
-import {
-  ArtifactNotFoundError,
-  ArtifactAccessError,
-  ArtifactCorruptError,
-} from "./ArtifactErrors";
+import { ArtifactNotFoundError, ArtifactAccessError, ArtifactCorruptError } from "./ArtifactErrors";
 import { SdkLogger } from "../logging/SdkLogger";
 
 /**
@@ -125,10 +121,7 @@ export class LocalArtifactResolver implements IArtifactResolver {
   /**
    * Loads and validates a single artifact file.
    */
-  private async loadFile(
-    filePath: string,
-    artifactType: "wasm" | "zkey"
-  ): Promise<Uint8Array> {
+  private async loadFile(filePath: string, artifactType: "wasm" | "zkey"): Promise<Uint8Array> {
     // 1. Validate extension
     const ext = path.extname(filePath).toLowerCase();
     const expectedExt = `.${artifactType}`;
@@ -156,11 +149,7 @@ export class LocalArtifactResolver implements IArtifactResolver {
         );
       }
       // Re-throw unexpected errors
-      throw new ArtifactAccessError(
-        filePath,
-        artifactType,
-        nodeError.message
-      );
+      throw new ArtifactAccessError(filePath, artifactType, nodeError.message);
     }
 
     // 3. Read file

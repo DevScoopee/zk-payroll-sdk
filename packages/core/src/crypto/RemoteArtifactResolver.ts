@@ -57,16 +57,8 @@ export class RemoteArtifactResolver implements IArtifactResolver {
    */
   async resolve(): Promise<ResolvedArtifacts> {
     const [wasm, zkey] = await Promise.all([
-      this.fetchArtifact(
-        this.config.wasmUrl,
-        "wasm",
-        this.config.wasmTimeoutMs ?? 30_000
-      ),
-      this.fetchArtifact(
-        this.config.zkeyUrl,
-        "zkey",
-        this.config.zkeyTimeoutMs ?? 60_000
-      ),
+      this.fetchArtifact(this.config.wasmUrl, "wasm", this.config.wasmTimeoutMs ?? 30_000),
+      this.fetchArtifact(this.config.zkeyUrl, "zkey", this.config.zkeyTimeoutMs ?? 60_000),
     ]);
 
     return { wasm, zkey: new Uint8Array(zkey) };

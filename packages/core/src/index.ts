@@ -44,7 +44,12 @@ export { DEFAULT_CONFIG } from "./config";
 export * from "./cache";
 export * from "./types";
 export * from "./progress";
-export { IdempotencyRegistry, createPaymentIdempotencyKey } from "./core/idempotency";
+export {
+  IdempotencyRegistry,
+  createPaymentIdempotencyKey,
+  createPayrollIdempotencyKey,
+} from "./core/idempotency";
+export type { PayrollIdempotencyKeyInput, PaymentIdempotencyKeyInput } from "./core/idempotency";
 export { Semaphore } from "./core/concurrency";
 export * from "./crypto/IProofGenerator";
 export * from "./adapters";
@@ -69,11 +74,7 @@ export * from "./polling";
 export * from "./pagination";
 
 // ── Event Stream Parser ──────────────────────────────────────────────────────
-export {
-  parseContractEvent,
-  parseContractEvents,
-  EventParsingError,
-} from "./event-parser";
+export { parseContractEvent, parseContractEvents, EventParsingError } from "./event-parser";
 export type {
   RawContractEvent,
   TypedContractEvent,
