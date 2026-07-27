@@ -25,3 +25,4 @@
 export * from "./types";
 export * from "./AssetRegistry";
 export * from "./formatters";
+export * from "./amountParsing";
