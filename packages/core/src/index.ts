@@ -113,3 +113,6 @@ export * from "./normalization";
 
 // ── Execution Summary ────────────────────────────────────────────────────────
 export * from "./summary";
+
+// ── Audit View-Key Helpers ──────────────────────────────────────────────────
+export * from "./audit";
