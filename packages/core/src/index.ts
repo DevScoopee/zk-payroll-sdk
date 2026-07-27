@@ -119,3 +119,9 @@ export * from "./audit";
 
 // ── Webhook Verification ────────────────────────────────────────────────────
 export * from "./webhooks";
+
+// ── Transaction Inspection ──────────────────────────────────────────────────
+export * from "./inspector";
+
+// ── Transaction Failure Classification ──────────────────────────────────────
+export * from "./classification";
