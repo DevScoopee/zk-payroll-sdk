@@ -141,6 +141,7 @@ Proof APIs and witness shapes: [ZK Proof Generation](./docs/ZK_PROOF_GENERATION.
 
 ### Related docs
 
+- [Browser and Server Usage Guide](./docs/BROWSER_AND_SERVER_USAGE.md)
 - [Runtime Support Matrix](./docs/SUPPORT_MATRIX.md)
 - [Wallet Adapters](./docs/WALLET_ADAPTERS.md)
 - [ZK Proof Generation](./docs/ZK_PROOF_GENERATION.md)
