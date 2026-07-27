@@ -1,5 +1,12 @@
 import { ValidationError } from "./errors";
 import { PaymentParams } from "../types";
+import {
+  BatchPaymentEntry,
+  BatchPayload,
+  BatchValidationError,
+  BatchPayloadBuilder,
+  validateBatchPayload,
+} from "../batch/BatchPayloadBuilder";
 
 export interface ValidationResult {
   isValid: boolean;
@@ -47,5 +54,27 @@ export class PayrollValidation {
       const firstError = result.errors[0];
       throw new ValidationError(firstError.message, firstError.field);
     }
+  }
+
+  /**
+   * Validates a batch payload locally before processing.
+   *
+   * @param entries - Payment entries array to validate.
+   * @returns BatchValidationError array; empty array if valid.
+   */
+  static validateBatchPayload(entries: BatchPaymentEntry[]): BatchValidationError[] {
+    return validateBatchPayload(entries);
+  }
+
+  /**
+   * Asserts that a batch payload is valid, returning the built BatchPayload object.
+   *
+   * @param entries - Payment entries array to validate.
+   * @throws {BatchValidationFailedError} If validation fails.
+   */
+  static assertValidBatchPayload(entries: BatchPaymentEntry[]): BatchPayload {
+    const builder = new BatchPayloadBuilder();
+    builder.addMany(entries);
+    return builder.build();
   }
 }

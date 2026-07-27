@@ -44,6 +44,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { IArtifactResolver, ResolvedArtifacts } from "./IArtifactResolver";
 import { ArtifactNotFoundError, ArtifactAccessError, ArtifactCorruptError } from "./ArtifactErrors";
+import { sha256Digest } from "./hashUtils";
 import { SdkLogger } from "../logging/SdkLogger";
 
 /**
@@ -54,6 +55,18 @@ export interface LocalArtifactResolverConfig {
   wasmPath: string;
   /** Absolute or relative path to the proving key .zkey file. */
   zkeyPath: string;
+  /**
+   * Expected SHA-256 hex digest of the .wasm file.
+   * When set, the resolver verifies the file hash before returning,
+   * throwing {@link ArtifactHashMismatchError} on mismatch.
+   */
+  expectedWasmHash?: string;
+  /**
+   * Expected SHA-256 hex digest of the .zkey file.
+   * When set, the resolver verifies the file hash before returning,
+   * throwing {@link ArtifactHashMismatchError} on mismatch.
+   */
+  expectedZkeyHash?: string;
 }
 
 /**
@@ -76,6 +89,8 @@ export interface LocalArtifactResolverConfig {
 export class LocalArtifactResolver implements IArtifactResolver {
   private readonly wasmPath: string;
   private readonly zkeyPath: string;
+  private readonly expectedWasmHash?: string;
+  private readonly expectedZkeyHash?: string;
 
   constructor(
     config: LocalArtifactResolverConfig,
@@ -83,6 +98,8 @@ export class LocalArtifactResolver implements IArtifactResolver {
   ) {
     this.wasmPath = path.resolve(config.wasmPath);
     this.zkeyPath = path.resolve(config.zkeyPath);
+    this.expectedWasmHash = config.expectedWasmHash;
+    this.expectedZkeyHash = config.expectedZkeyHash;
   }
 
   /**
@@ -103,6 +120,12 @@ export class LocalArtifactResolver implements IArtifactResolver {
     const [wasm, zkey] = await Promise.all([
       this.loadFile(this.wasmPath, "wasm"),
       this.loadFile(this.zkeyPath, "zkey"),
+    ]);
+
+    // Verify SHA-256 hashes if expected values were provided
+    await Promise.all([
+      this.verifyHash(wasm, this.wasmPath, "wasm", this.expectedWasmHash),
+      this.verifyHash(zkey, this.zkeyPath, "zkey", this.expectedZkeyHash),
     ]);
 
     this.logger?.info("artifact_load_complete", { source: "local" });
@@ -165,5 +188,31 @@ export class LocalArtifactResolver implements IArtifactResolver {
     }
 
     return new Uint8Array(buffer);
+  }
+
+  /**
+   * Verifies the SHA-256 hash of loaded content against an expected value.
+   * Throws ArtifactHashMismatchError on mismatch. No-op if expectedHash is undefined.
+   */
+  private async verifyHash(
+    content: Uint8Array,
+    artifactPath: string,
+    artifactType: "wasm" | "zkey",
+    expectedHash?: string
+  ): Promise<void> {
+    if (!expectedHash) {
+      return;
+    }
+
+    const actualHash = await sha256Digest(content);
+
+    if (actualHash !== expectedHash.toLowerCase()) {
+      throw new ArtifactHashMismatchError(artifactPath, artifactType, expectedHash, actualHash);
+    }
+
+    this.logger?.info("artifact_hash_verified", {
+      type: artifactType,
+      path: artifactPath,
+    });
   }
 }

@@ -108,3 +108,21 @@ export * from "./redaction";
 
 // ── Multi-Asset Metadata ────────────────────────────────────────────────────
 export * from "./assets";
+
+// ── Payload Normalization ───────────────────────────────────────────────────
+export * from "./normalization";
+
+// ── Execution Summary ────────────────────────────────────────────────────────
+export * from "./summary";
+
+// ── Audit View-Key Helpers ──────────────────────────────────────────────────
+export * from "./audit";
+
+// ── Webhook Verification ────────────────────────────────────────────────────
+export * from "./webhooks";
+
+// ── Transaction Inspection ──────────────────────────────────────────────────
+export * from "./inspector";
+
+// ── Transaction Failure Classification ──────────────────────────────────────
+export * from "./classification";
