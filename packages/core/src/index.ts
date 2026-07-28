@@ -105,6 +105,9 @@ export * from "./draft";
 // ── History Filter Builders ─────────────────────────────────────────────────
 export * from "./filters";
 
+// ── Archived Payroll History Helpers ────────────────────────────────────────
+export * from "./archived";
+
 // ── Redaction Utilities ─────────────────────────────────────────────────────
 export * from "./redaction";
 
