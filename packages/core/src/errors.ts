@@ -11,6 +11,7 @@ export {
   WalletRejectionError,
   WalletErrorCode,
   toUserFriendlyError,
+  formatRedactedError,
   DEFAULT_ERROR_MESSAGES,
   mapRpcError,
   TimeoutFailureState,
@@ -22,6 +23,7 @@ export type {
   ContractErrorCodeType,
   WalletErrorCodeType,
   UserFriendlyError,
+  FormattedError,
   ErrorMessageOverrides,
   TimeoutFailureStateType,
 } from "./core/errors";

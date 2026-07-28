@@ -353,6 +353,163 @@ export function toUserFriendlyError(
   return { friendlyMessage, code, context, originalError: error };
 }
 
+// ── Redacted Error Formatter ────────────────────────────────────────────────
+
+/** Patterns that match sensitive field values inside error messages. */
+const SENSITIVE_PATTERNS: RegExp[] = [
+  /recipient\s*[:=]\s*\S+/gi,
+  /amount\s*[:=]\s*\S+/gi,
+  /witness\s*[:=]\s*\S+/gi,
+  /privateKey\s*[:=]\s*\S+/gi,
+  /secret\s*[:=]\s*\S+/gi,
+  /password\s*[:=]\s*\S+/gi,
+  /token\s*[:=]\s*\S+/gi,
+  /mnemonic\s*[:=]\s*\S+/gi,
+  /seed\s*[:=]\s*\S+/gi,
+  /authorization\s*[:=]\s*\S+/gi,
+  /apiKey\s*[:=]\s*\S+/gi,
+  /api_key\s*[:=]\s*\S+/gi,
+  /accessToken\s*[:=]\s*\S+/gi,
+  /access_token\s*[:=]\s*\S+/gi,
+  /refreshToken\s*[:=]\s*\S+/gi,
+  /refresh_token\s*[:=]\s*\S+/gi,
+  /signingKey\s*[:=]\s*\S+/gi,
+];
+
+/**
+ * A formatted error ready for logging or display in dashboards.
+ *
+ * Contains a sanitized message safe for external consumption alongside
+ * the original error code and context for internal diagnostics.
+ */
+export interface FormattedError {
+  /** Sanitized error message safe for logs and dashboards. */
+  message: string;
+  /** Error code from the original error. */
+  code: string;
+  /** Sanitized context metadata (sensitive fields removed). */
+  context: Record<string, unknown>;
+  /** Human-readable category of the error. */
+  category: string;
+  /** Whether the error is likely retryable. */
+  retryable: boolean;
+}
+
+const CATEGORY_MAP: Record<string, string> = {
+  SIMULATION_FAILED: "Simulation",
+  TRANSACTION_SUBMISSION_FAILED: "Submission",
+  TRANSACTION_TIMEOUT: "Timeout",
+  RPC_TIMEOUT: "Network",
+  INSUFFICIENT_FEE: "Fee",
+  CONTRACT_REVERT: "Contract",
+  INVALID_RESPONSE: "Network",
+  UNKNOWN_RPC_ERROR: "Unknown",
+  NETWORK_ERROR: "Network",
+  PROOF_GENERATION_FAILED: "Proof Generation",
+  VALIDATION_ERROR: "Validation",
+  WALLET_NOT_INSTALLED: "Wallet",
+  WALLET_NOT_CONNECTED: "Wallet",
+  WALLET_CONNECTION_REJECTED: "Wallet",
+  WALLET_SIGNING_REJECTED: "Wallet",
+  WALLET_NETWORK_MISMATCH: "Wallet",
+  WALLET_INVALID_XDR: "Wallet",
+  WALLET_UNKNOWN_ERROR: "Wallet",
+};
+
+const RETRYABLE_CODES = new Set<string>([
+  ContractErrorCode.TRANSACTION_TIMEOUT,
+  ContractErrorCode.RPC_TIMEOUT,
+  ContractErrorCode.INSUFFICIENT_FEE,
+  ContractErrorCode.TRANSACTION_SUBMISSION_FAILED,
+  ContractErrorCode.INVALID_RESPONSE,
+]);
+
+/**
+ * Strips sensitive field values from an error message, replacing them
+ * with `[redacted]` to make the message safe for logging and dashboards.
+ *
+ * @example
+ * ```typescript
+ * const err = new Error("recipient=GABC123... amount=5000");
+ * const formatted = formatRedactedError(err);
+ * // formatted.message === "recipient=[redacted] amount=[redacted]"
+ * ```
+ */
+export function formatRedactedError(error: unknown, placeholder = "[redacted]"): FormattedError {
+  let message = "An unknown error occurred.";
+  let code: string = ContractErrorCode.UNKNOWN_RPC_ERROR;
+  let context: Record<string, unknown> = {};
+
+  if (error instanceof ZkPayrollError) {
+    message = error.message;
+    code = error.code;
+    context = { ...error.context };
+  } else if (error instanceof Error) {
+    message = error.message;
+    if ("code" in error) {
+      const errObj = error as { code: unknown };
+      code = String(errObj.code);
+    }
+    if ("context" in error && typeof (error as { context: unknown }).context === "object") {
+      context = { ...(error as { context: Record<string, unknown> }).context };
+    }
+  } else if (typeof error === "string") {
+    message = error;
+  }
+
+  // Sanitize message
+  let sanitizedMessage = message;
+  for (const pattern of SENSITIVE_PATTERNS) {
+    pattern.lastIndex = 0;
+    sanitizedMessage = sanitizedMessage.replace(pattern, (match) => {
+      const eqIdx = match.search(/[:=]/);
+      if (eqIdx === -1) return placeholder;
+      return match.slice(0, eqIdx + 1) + placeholder;
+    });
+  }
+
+  // Sanitize context
+  const sensitiveKeys = new Set([
+    "recipient",
+    "amount",
+    "witness",
+    "privateKey",
+    "adminKey",
+    "secret",
+    "password",
+    "token",
+    "mnemonic",
+    "seed",
+    "authorization",
+    "apiKey",
+    "api_key",
+    "accessToken",
+    "access_token",
+    "refreshToken",
+    "refresh_token",
+    "signingKey",
+  ]);
+  const sanitizedContext: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(context)) {
+    if (sensitiveKeys.has(key)) {
+      sanitizedContext[key] = placeholder;
+    } else {
+      sanitizedContext[key] = value;
+    }
+  }
+
+  const category = CATEGORY_MAP[code] ?? "Unknown";
+  const retryable = RETRYABLE_CODES.has(code as ContractErrorCodeType);
+
+  return {
+    message: sanitizedMessage,
+    code,
+    context: sanitizedContext,
+    category,
+    retryable,
+  };
+}
+
 // ── Error Mapping Utility ───────────────────────────────────────────────────
 
 /**
