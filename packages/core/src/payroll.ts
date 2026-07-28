@@ -1,9 +1,9 @@
-import { Keypair, Networks } from "@stellar/stellar-sdk";
+import { Keypair, Networks, xdr } from "@stellar/stellar-sdk";
 import type { ISigner } from "./signer/types";
 import { toISigner } from "./signer/KeypairSigner";
 import { PayrollContractWrapper } from "./adapters/PayrollContractWrapper";
 import { IProofGenerator, ProofPayload } from "./crypto/IProofGenerator";
-import { PayrollError, PayrollServiceErrorCode } from "./errors";
+import { PayrollError, PayrollServiceErrorCode, ZkPayrollError } from "./errors";
 import { PaymentParams, PaymentResult } from "./types";
 import { SdkLogger } from "./logging/SdkLogger";
 import { IdempotencyRegistry, createPaymentIdempotencyKey } from "./core/idempotency";
@@ -128,15 +128,32 @@ export class PayrollService {
     );
     this.logger?.info("contract_invocation_start", { method: "private_pay" });
 
-    const resultXdr = await this.contractWrapper.privatePay(
-      recipient,
-      amount,
-      asset,
-      proof,
-      this.signer,
-      this.network,
-      params.idempotencyKey ? { idempotencyKey: params.idempotencyKey } : undefined
-    );
+    let resultXdr: xdr.ScVal;
+    try {
+      resultXdr = await this.contractWrapper.privatePay(
+        recipient,
+        amount,
+        asset,
+        proof,
+        this.signer,
+        this.network,
+        params.idempotencyKey ? { idempotencyKey: params.idempotencyKey } : undefined
+      );
+    } catch (error) {
+      // Surfaces contract-level rejections -- including state-gating
+      // failures where the contract reverts because e.g. the company or
+      // payroll isn't in a state that allows this call -- with the same
+      // observability the validation-failure path already gets above.
+      // The error itself (its type and message, e.g. ContractExecutionError
+      // with ContractErrorCode.CONTRACT_REVERT) is rethrown unchanged so
+      // existing consumers that catch specific error types keep working.
+      this.logger?.error("contract_invocation_failed", {
+        method: "private_pay",
+        error: error instanceof Error ? error.message : String(error),
+        code: error instanceof ZkPayrollError ? error.code : undefined,
+      });
+      throw error;
+    }
 
     params.onProgress?.(
       createPayrollProgressEvent({

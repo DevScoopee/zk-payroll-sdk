@@ -115,6 +115,9 @@ export * from "./normalization";
 // ── Execution Summary ────────────────────────────────────────────────────────
 export * from "./summary";
 
+// ── Reconciliation Diff ─────────────────────────────────────────────────────
+export * from "./reconciliation";
+
 // ── Audit View-Key Helpers ──────────────────────────────────────────────────
 export * from "./audit";
 
