@@ -6,6 +6,7 @@ import { IProofGenerator, ProofPayload } from "./crypto/IProofGenerator";
 import { PayrollError, PayrollServiceErrorCode, ZkPayrollError } from "./errors";
 import { PaymentParams, PaymentResult } from "./types";
 import { SdkLogger } from "./logging/SdkLogger";
+import { redactError } from "./redaction/RedactionEngine";
 import { IdempotencyRegistry, createPaymentIdempotencyKey } from "./core/idempotency";
 import { createPayrollProgressEvent } from "./progress";
 
@@ -147,9 +148,17 @@ export class PayrollService {
       // The error itself (its type and message, e.g. ContractExecutionError
       // with ContractErrorCode.CONTRACT_REVERT) is rethrown unchanged so
       // existing consumers that catch specific error types keep working.
+      //
+      // The error message is sanitized through redactError() before logging
+      // to prevent sensitive field values (privateKey=..., recipient=..., etc.)
+      // embedded in contract-level error messages from leaking into logs.
+      const safeMessage =
+        error instanceof Error
+          ? redactError(error).message
+          : String(error);
       this.logger?.error("contract_invocation_failed", {
         method: "private_pay",
-        error: error instanceof Error ? error.message : String(error),
+        error: safeMessage,
         code: error instanceof ZkPayrollError ? error.code : undefined,
       });
       throw error;
