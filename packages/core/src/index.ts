@@ -46,7 +46,12 @@ export { DEFAULT_CONFIG } from "./config";
 export * from "./cache";
 export * from "./types";
 export * from "./progress";
-export { IdempotencyRegistry, createPaymentIdempotencyKey } from "./core/idempotency";
+export {
+  IdempotencyRegistry,
+  createPaymentIdempotencyKey,
+  createPayrollIdempotencyKey,
+} from "./core/idempotency";
+export type { PayrollIdempotencyKeyInput, PaymentIdempotencyKeyInput } from "./core/idempotency";
 export { Semaphore } from "./core/concurrency";
 export * from "./crypto/IProofGenerator";
 export * from "./adapters";
@@ -126,3 +131,8 @@ export * from "./fee-estimation";
 
 // ── Transaction Envelope Summarizer ─────────────────────────────────────────
 export * from "./transaction-envelope";
+// ── Transaction Inspection ──────────────────────────────────────────────────
+export * from "./inspector";
+
+// ── Transaction Failure Classification ──────────────────────────────────────
+export * from "./classification";
