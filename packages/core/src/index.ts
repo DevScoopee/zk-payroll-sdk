@@ -29,6 +29,7 @@ export {
   WalletRejectionError,
   WalletErrorCode,
   toUserFriendlyError,
+  formatRedactedError,
   DEFAULT_ERROR_MESSAGES,
   mapRpcError,
   PayrollError,
@@ -38,13 +39,19 @@ export type {
   ContractErrorCodeType,
   WalletErrorCodeType,
   UserFriendlyError,
+  FormattedError,
   ErrorMessageOverrides,
 } from "./errors";
 export { DEFAULT_CONFIG } from "./config";
 export * from "./cache";
 export * from "./types";
 export * from "./progress";
-export { IdempotencyRegistry, createPaymentIdempotencyKey } from "./core/idempotency";
+export {
+  IdempotencyRegistry,
+  createPaymentIdempotencyKey,
+  createPayrollIdempotencyKey,
+} from "./core/idempotency";
+export type { PayrollIdempotencyKeyInput, PaymentIdempotencyKeyInput } from "./core/idempotency";
 export { Semaphore } from "./core/concurrency";
 export * from "./crypto/IProofGenerator";
 export * from "./adapters";
@@ -63,16 +70,13 @@ export * from "./testing";
 // ── Events ──────────────────────────────────────────────────────────────────
 export { TransactionWatcher } from "./events";
 export type { ConfirmationOptions, ConfirmationResult } from "./events";
+export * from "./polling";
 
 // ── Pagination Helpers ───────────────────────────────────────────────────────
 export * from "./pagination";
 
 // ── Event Stream Parser ──────────────────────────────────────────────────────
-export {
-  parseContractEvent,
-  parseContractEvents,
-  EventParsingError,
-} from "./event-parser";
+export { parseContractEvent, parseContractEvents, EventParsingError } from "./event-parser";
 export type {
   RawContractEvent,
   TypedContractEvent,
@@ -109,3 +113,31 @@ export * from "./assets";
 
 // ── Transaction Status Mapping ──────────────────────────────────────────────
 export * from "./transactions";
+// ── Payload Normalization ───────────────────────────────────────────────────
+export * from "./normalization";
+
+// ── Execution Summary ────────────────────────────────────────────────────────
+export * from "./summary";
+
+// ── Reconciliation Diff ─────────────────────────────────────────────────────
+export * from "./reconciliation";
+
+// ── Audit View-Key Helpers ──────────────────────────────────────────────────
+export * from "./audit";
+
+// ── Webhook Verification ────────────────────────────────────────────────────
+export * from "./webhooks";
+
+// ── Environment Capability Detector ─────────────────────────────────────────
+export * from "./env";
+
+// ── Fee Estimation Helper ───────────────────────────────────────────────────
+export * from "./fee-estimation";
+
+// ── Transaction Envelope Summarizer ─────────────────────────────────────────
+export * from "./transaction-envelope";
+// ── Transaction Inspection ──────────────────────────────────────────────────
+export * from "./inspector";
+
+// ── Transaction Failure Classification ──────────────────────────────────────
+export * from "./classification";

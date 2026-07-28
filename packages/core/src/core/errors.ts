@@ -80,8 +80,7 @@ export const WalletErrorCode = {
   UNKNOWN_ERROR: "WALLET_UNKNOWN_ERROR",
 } as const;
 
-export type WalletErrorCodeType =
-  (typeof WalletErrorCode)[keyof typeof WalletErrorCode];
+export type WalletErrorCodeType = (typeof WalletErrorCode)[keyof typeof WalletErrorCode];
 
 /**
  * Base class for wallet interaction errors.
@@ -129,14 +128,71 @@ export const ContractErrorCode = {
   UNKNOWN_RPC_ERROR: "UNKNOWN_RPC_ERROR",
 } as const;
 
-export type ContractErrorCodeType =
-  (typeof ContractErrorCode)[keyof typeof ContractErrorCode];
+export type ContractErrorCodeType = (typeof ContractErrorCode)[keyof typeof ContractErrorCode];
+
+export const TimeoutFailureState = {
+  RETRYABLE: "RETRYABLE",
+  EXPIRED: "EXPIRED",
+  UNKNOWN: "UNKNOWN",
+  TERMINAL: "TERMINAL",
+} as const;
+
+export type TimeoutFailureStateType =
+  (typeof TimeoutFailureState)[keyof typeof TimeoutFailureState];
+
+export function classifyContractErrorCode(code: ContractErrorCodeType): TimeoutFailureStateType {
+  switch (code) {
+    case ContractErrorCode.TRANSACTION_TIMEOUT:
+      return TimeoutFailureState.EXPIRED;
+    case ContractErrorCode.SIMULATION_FAILED:
+    case ContractErrorCode.CONTRACT_REVERT:
+      return TimeoutFailureState.TERMINAL;
+    case ContractErrorCode.INSUFFICIENT_FEE:
+    case ContractErrorCode.TRANSACTION_SUBMISSION_FAILED:
+      return TimeoutFailureState.RETRYABLE;
+    case ContractErrorCode.RPC_TIMEOUT:
+      return TimeoutFailureState.RETRYABLE;
+    case ContractErrorCode.INVALID_RESPONSE:
+      return TimeoutFailureState.RETRYABLE;
+    case ContractErrorCode.UNKNOWN_RPC_ERROR:
+    default:
+      return TimeoutFailureState.UNKNOWN;
+  }
+}
+
+export function classifyTimeoutFailure(error: unknown): TimeoutFailureStateType {
+  if (error instanceof ContractExecutionError) {
+    return error.failureState;
+  }
+
+  const msg = error instanceof Error ? error.message : String(error);
+
+  if (
+    /econnrefused|econnreset|enetunreach|etimedout|eai_again|network.*error|fetch.*failed|request.*failed|socket/i.test(
+      msg
+    )
+  ) {
+    return TimeoutFailureState.RETRYABLE;
+  }
+
+  if (/txn.*timeout|tx.*expired|ledger.*seq|too.*old|stale/i.test(msg)) {
+    return TimeoutFailureState.EXPIRED;
+  }
+
+  if (/revert|trap|wasm|simulation.*fail|unauthorized/i.test(msg)) {
+    return TimeoutFailureState.TERMINAL;
+  }
+
+  return TimeoutFailureState.UNKNOWN;
+}
 
 /**
  * Thrown when a Soroban contract call fails (simulation, submission,
  * timeout, or on-chain revert).
  */
 export class ContractExecutionError extends ZkPayrollError {
+  public readonly failureState: TimeoutFailureStateType;
+
   constructor(
     message: string,
     code: ContractErrorCodeType = ContractErrorCode.UNKNOWN_RPC_ERROR,
@@ -144,6 +200,7 @@ export class ContractExecutionError extends ZkPayrollError {
     cause?: unknown
   ) {
     super(message, code, context, cause);
+    this.failureState = classifyContractErrorCode(code);
   }
 }
 
@@ -220,15 +277,18 @@ export const DEFAULT_ERROR_MESSAGES: Record<string, string> = {
     "Zero-knowledge proof generation failed. This may be due to invalid inputs or insufficient system resources.",
   VALIDATION_ERROR:
     "The provided parameters failed validation. Please review your inputs and try again.",
-  [WalletErrorCode.NOT_INSTALLED]: "The wallet extension is not installed. Please install it and try again.",
-  [WalletErrorCode.NOT_CONNECTED]: "The wallet is not connected. Please connect your wallet and try again.",
+  [WalletErrorCode.NOT_INSTALLED]:
+    "The wallet extension is not installed. Please install it and try again.",
+  [WalletErrorCode.NOT_CONNECTED]:
+    "The wallet is not connected. Please connect your wallet and try again.",
   [WalletErrorCode.CONNECTION_REJECTED]:
     "The wallet connection request was rejected. Please approve the connection in your wallet and try again.",
   [WalletErrorCode.SIGNING_REJECTED]:
     "The transaction signing request was rejected. Please approve the signature in your wallet and try again.",
   [WalletErrorCode.NETWORK_MISMATCH]:
     "The wallet is on the wrong network. Please switch to the correct network and try again.",
-  [WalletErrorCode.INVALID_XDR]: "The transaction data is invalid. This may indicate a software bug.",
+  [WalletErrorCode.INVALID_XDR]:
+    "The transaction data is invalid. This may indicate a software bug.",
   [WalletErrorCode.UNKNOWN_ERROR]: "An unexpected wallet error occurred. Please try again.",
 };
 
@@ -293,15 +353,169 @@ export function toUserFriendlyError(
   return { friendlyMessage, code, context, originalError: error };
 }
 
+// ── Redacted Error Formatter ────────────────────────────────────────────────
+
+/** Patterns that match sensitive field values inside error messages. */
+const SENSITIVE_PATTERNS: RegExp[] = [
+  /recipient\s*[:=]\s*\S+/gi,
+  /amount\s*[:=]\s*\S+/gi,
+  /witness\s*[:=]\s*\S+/gi,
+  /privateKey\s*[:=]\s*\S+/gi,
+  /secret\s*[:=]\s*\S+/gi,
+  /password\s*[:=]\s*\S+/gi,
+  /token\s*[:=]\s*\S+/gi,
+  /mnemonic\s*[:=]\s*\S+/gi,
+  /seed\s*[:=]\s*\S+/gi,
+  /authorization\s*[:=]\s*\S+/gi,
+  /apiKey\s*[:=]\s*\S+/gi,
+  /api_key\s*[:=]\s*\S+/gi,
+  /accessToken\s*[:=]\s*\S+/gi,
+  /access_token\s*[:=]\s*\S+/gi,
+  /refreshToken\s*[:=]\s*\S+/gi,
+  /refresh_token\s*[:=]\s*\S+/gi,
+  /signingKey\s*[:=]\s*\S+/gi,
+];
+
+/**
+ * A formatted error ready for logging or display in dashboards.
+ *
+ * Contains a sanitized message safe for external consumption alongside
+ * the original error code and context for internal diagnostics.
+ */
+export interface FormattedError {
+  /** Sanitized error message safe for logs and dashboards. */
+  message: string;
+  /** Error code from the original error. */
+  code: string;
+  /** Sanitized context metadata (sensitive fields removed). */
+  context: Record<string, unknown>;
+  /** Human-readable category of the error. */
+  category: string;
+  /** Whether the error is likely retryable. */
+  retryable: boolean;
+}
+
+const CATEGORY_MAP: Record<string, string> = {
+  SIMULATION_FAILED: "Simulation",
+  TRANSACTION_SUBMISSION_FAILED: "Submission",
+  TRANSACTION_TIMEOUT: "Timeout",
+  RPC_TIMEOUT: "Network",
+  INSUFFICIENT_FEE: "Fee",
+  CONTRACT_REVERT: "Contract",
+  INVALID_RESPONSE: "Network",
+  UNKNOWN_RPC_ERROR: "Unknown",
+  NETWORK_ERROR: "Network",
+  PROOF_GENERATION_FAILED: "Proof Generation",
+  VALIDATION_ERROR: "Validation",
+  WALLET_NOT_INSTALLED: "Wallet",
+  WALLET_NOT_CONNECTED: "Wallet",
+  WALLET_CONNECTION_REJECTED: "Wallet",
+  WALLET_SIGNING_REJECTED: "Wallet",
+  WALLET_NETWORK_MISMATCH: "Wallet",
+  WALLET_INVALID_XDR: "Wallet",
+  WALLET_UNKNOWN_ERROR: "Wallet",
+};
+
+const RETRYABLE_CODES = new Set<string>([
+  ContractErrorCode.TRANSACTION_TIMEOUT,
+  ContractErrorCode.RPC_TIMEOUT,
+  ContractErrorCode.INSUFFICIENT_FEE,
+  ContractErrorCode.TRANSACTION_SUBMISSION_FAILED,
+  ContractErrorCode.INVALID_RESPONSE,
+]);
+
+/**
+ * Strips sensitive field values from an error message, replacing them
+ * with `[redacted]` to make the message safe for logging and dashboards.
+ *
+ * @example
+ * ```typescript
+ * const err = new Error("recipient=GABC123... amount=5000");
+ * const formatted = formatRedactedError(err);
+ * // formatted.message === "recipient=[redacted] amount=[redacted]"
+ * ```
+ */
+export function formatRedactedError(error: unknown, placeholder = "[redacted]"): FormattedError {
+  let message = "An unknown error occurred.";
+  let code: string = ContractErrorCode.UNKNOWN_RPC_ERROR;
+  let context: Record<string, unknown> = {};
+
+  if (error instanceof ZkPayrollError) {
+    message = error.message;
+    code = error.code;
+    context = { ...error.context };
+  } else if (error instanceof Error) {
+    message = error.message;
+    if ("code" in error) {
+      const errObj = error as { code: unknown };
+      code = String(errObj.code);
+    }
+    if ("context" in error && typeof (error as { context: unknown }).context === "object") {
+      context = { ...(error as { context: Record<string, unknown> }).context };
+    }
+  } else if (typeof error === "string") {
+    message = error;
+  }
+
+  // Sanitize message
+  let sanitizedMessage = message;
+  for (const pattern of SENSITIVE_PATTERNS) {
+    pattern.lastIndex = 0;
+    sanitizedMessage = sanitizedMessage.replace(pattern, (match) => {
+      const eqIdx = match.search(/[:=]/);
+      if (eqIdx === -1) return placeholder;
+      return match.slice(0, eqIdx + 1) + placeholder;
+    });
+  }
+
+  // Sanitize context
+  const sensitiveKeys = new Set([
+    "recipient",
+    "amount",
+    "witness",
+    "privateKey",
+    "adminKey",
+    "secret",
+    "password",
+    "token",
+    "mnemonic",
+    "seed",
+    "authorization",
+    "apiKey",
+    "api_key",
+    "accessToken",
+    "access_token",
+    "refreshToken",
+    "refresh_token",
+    "signingKey",
+  ]);
+  const sanitizedContext: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(context)) {
+    if (sensitiveKeys.has(key)) {
+      sanitizedContext[key] = placeholder;
+    } else {
+      sanitizedContext[key] = value;
+    }
+  }
+
+  const category = CATEGORY_MAP[code] ?? "Unknown";
+  const retryable = RETRYABLE_CODES.has(code as ContractErrorCodeType);
+
+  return {
+    message: sanitizedMessage,
+    code,
+    context: sanitizedContext,
+    category,
+    retryable,
+  };
+}
+
 // ── Error Mapping Utility ───────────────────────────────────────────────────
 
 /**
  * Map a raw Soroban RPC error to a typed ContractExecutionError.
  */
-export function mapRpcError(
-  error: unknown,
-  context: ErrorContext = {}
-): ContractExecutionError {
+export function mapRpcError(error: unknown, context: ErrorContext = {}): ContractExecutionError {
   if (error instanceof ContractExecutionError) return error;
 
   const msg = error instanceof Error ? error.message : String(error);

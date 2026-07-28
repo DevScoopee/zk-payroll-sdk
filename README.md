@@ -70,6 +70,85 @@ await service.processPayment({
 - **Error Handling**: Robust error typing and management.
 - **Mock Testing Environment**: Comprehensive testing utilities for unit tests without a live network.
 
+## Browser and Backend Usage
+
+Use this section to pick the right environment before you wire the SDK into a product. The package supports **browsers** (wallets, dashboards) and **Node.js backends** (workers, automation), but secrets and signing paths differ.
+
+### Quick matrix
+
+| Concern | Browser (frontend) | Backend (Node worker / service) |
+|--------|--------------------|----------------------------------|
+| **Wallet signing** | User wallets (Freighter, Albedo) via adapters | Server-held keys from a secrets manager — **not** browser extensions |
+| **Proof generation** | On-device with snarkjs; prefer [Web Workers](./docs/WORKER_PROOF_GENERATION.md) so the UI stays responsive | On the worker/process for batch payroll; good for heavy or unattended jobs |
+| **Secrets / witnesses** | Never embed Stellar secret keys (`S…`) or long-lived note secrets in frontend code, env shipped to the client, or `localStorage` | Load signer material from env / KMS / secrets manager; never log full witnesses |
+| **Next.js / SSR** | Import SDK only in Client Components (`"use client"`) | Do not import the browser wallet path in Server Components or Route Handlers for UI signing |
+| **Best fit** | Employee/employer dashboards, interactive connect + sign | Payroll automation, queues, retries, multi-payment workers |
+
+Supported runtime versions: [Runtime Support Matrix](./docs/SUPPORT_MATRIX.md).
+
+### Browser (short guidance)
+
+Interactive apps should connect a wallet, generate or request proofs without blocking the main thread when possible, and keep sensitive material off the client bundle.
+
+```typescript
+// Frontend / Next.js Client Component — "use client"
+import { FreighterAdapter } from "@zk-payroll/sdk";
+
+const wallet = new FreighterAdapter();
+if (wallet.isAvailable()) {
+  const publicKey = await wallet.connect();
+  // Build XDR with public flows; sign via the adapter — never with a hardcoded secret key
+  // const signed = await wallet.signTransaction(xdr);
+}
+```
+
+- Prefer [Worker-based proof generation](./docs/WORKER_PROOF_GENERATION.md) for multi-second circuit work.
+- For App Router apps, follow [Next.js Integration](./docs/NEXTJS_INTEGRATION.md) (client boundary rules).
+- Wallet details: [Wallet Adapters](./docs/WALLET_ADAPTERS.md).
+
+### Backend (short guidance)
+
+Backend services own **automation**: queue jobs, generate proofs on the server, sign with keys that never leave the host, and submit to RPC.
+
+```typescript
+// Node worker — secrets from environment / secrets manager only
+import { PayrollService, ConfigPresets } from "@zk-payroll/sdk";
+
+const config = ConfigPresets.testnet()
+  .withContractId(process.env.CONTRACT_ID!)
+  .withProofConfig({
+    wasmUrl: process.env.WASM_URL!,
+    zkeyUrl: process.env.ZKEY_URL!,
+  })
+  .build();
+
+const service = new PayrollService(config);
+// Signer secret: process.env / KMS — never commit S… keys or put them in browser env
+```
+
+- End-to-end worker prototype: [Backend Worker Quickstart](./docs/BACKEND_WORKER_QUICKSTART.md).
+- Production patterns (config, secret handling, retries): [Backend Integration Guide](./docs/BACKEND_INTEGRATION_GUIDE.md).
+
+### Secret handling (both environments)
+
+| Do | Don't |
+|----|--------|
+| Keep note `secret` / nullifier inputs in memory only as long as needed for proving | Log witnesses, proofs with private inputs, or secret keys |
+| Use HTTPS CDN or authenticated artifact hosts for `.wasm` / `.zkey` | Ship production signing keys in frontend env (`NEXT_PUBLIC_*`, Vite `VITE_*`, etc.) |
+| Rotate and scope backend signer keys; prefer HSM/KMS where possible | Reuse a single hot key across untrusted multi-tenant frontends |
+
+Proof APIs and witness shapes: [ZK Proof Generation](./docs/ZK_PROOF_GENERATION.md).
+
+### Related docs
+
+- [Runtime Support Matrix](./docs/SUPPORT_MATRIX.md)
+- [Wallet Adapters](./docs/WALLET_ADAPTERS.md)
+- [ZK Proof Generation](./docs/ZK_PROOF_GENERATION.md)
+- [Worker Proof Generation](./docs/WORKER_PROOF_GENERATION.md)
+- [Next.js Integration](./docs/NEXTJS_INTEGRATION.md)
+- [Backend Worker Quickstart](./docs/BACKEND_WORKER_QUICKSTART.md)
+- [Backend Integration Guide](./docs/BACKEND_INTEGRATION_GUIDE.md)
+
 ## Zero-Knowledge Proof Generation
 
 The SDK includes production-ready ZK proof generation using snarkjs:
@@ -218,6 +297,54 @@ const isValid = await client.verifyCommitment("G...", "G...", 1n, proof, signer)
 await client.revealSalary("G...", "G...", 1n, 1000n, signer);
 ```
 
+## Payload Normalization
+
+Consumers rarely pass payroll data in exactly one shape (different key names, extra whitespace, comma-formatted amounts, mixed-case addresses). `normalizePayrollPayload` converts any of these variations into the SDK's canonical entry shape before validation, proof preparation, or transaction building:
+
+```typescript
+import { normalizePayrollPayload } from "@zk-payroll/sdk";
+
+const { entries, issues } = normalizePayrollPayload({
+  entries: [
+    { employee_id: "  E-42  ", wallet: "gabc...", asset: "xlm", amount: "1,000.50" },
+  ],
+});
+
+// entries[0] => { employeeId: "E-42", walletAddress: "GABC...", asset: "native", amount: "1000.50", source: {...} }
+
+// Required fields (employeeId, walletAddress, asset, amount) are never silently dropped —
+// missing/unparseable data shows up as an indexed issue instead, with the original
+// input still reachable via entries[issue.index].source.raw for clear validation errors.
+if (issues.length > 0) {
+  console.log(issues);
+}
+```
+
+See the [Payload Normalization Guide](./docs/PAYLOAD_NORMALIZATION.md) for the full field-by-field normalization rules.
+
+## Batch Payload Validation
+
+The SDK automatically validates batch payroll payloads before submitting them to contracts, preventing empty batches, duplicate recipients, and invalid amounts:
+
+```typescript
+import { BatchPayloadBuilder, validateBatchPayload, PayrollValidation } from "@zk-payroll/sdk";
+
+const entries = [
+  { recipient: "GABC...", amount: 1000n, asset: "native" },
+  { recipient: "GDEF...", amount: 2000n, asset: "native" },
+];
+
+// Validate entries before building
+const errors = validateBatchPayload(entries);
+if (errors.length === 0) {
+  const payload = new BatchPayloadBuilder().addMany(entries).build();
+  // Safe to submit payload.entries
+} else {
+  // Structured errors returned for UI display (code, message, field, index)
+  console.log(errors);
+}
+```
+
 ### ProofVerifierClient
 
 ```typescript
@@ -340,12 +467,53 @@ const corp = AssetRegistry.getOrThrow("CTOKEN_CORP123");
 parseAmount("500.00 CORP", corp); // 3_500_000_000n
 ```
 
+### Canonical amount normalization
+
+Before submitting any amount to a contract, batch builder, or commitment hash, normalize
+it into the asset's canonical smallest-unit `bigint`. `normalizeCanonicalAmount` accepts
+any of the loose shapes payroll data arrives in (`string`, `number`, `bigint`) and either
+an asset id string (resolved via the registry) or an `AssetMetadata` object:
+
+```typescript
+import {
+  normalizeCanonicalAmount,
+  tryNormalizeCanonicalAmount,
+  RoundingMode,
+} from "@zk-payroll/sdk";
+
+// Throwing variant — canonical { amount, decimals, assetSymbol, assetId, wasRounded, original }
+const { amount, assetSymbol, wasRounded } = normalizeCanonicalAmount(
+  "  $1,000.50 XLM  ", // formatted string with currency symbol + whitespace
+  "native",             // asset id resolved via AssetRegistry
+  { rounding: RoundingMode.HALF_UP }
+);
+// amount      => 10_005_000_000n (canonical stroops)
+// assetSymbol => "XLM"
+// wasRounded  => false  (input has 2 decimals, XLM has 7 — no rounding)
+
+// bigint inputs are already canonical (matches formatAmount) — no double-scaling
+normalizeCanonicalAmount(10_005_000_000n, "native").amount; // 10_005_000_000n
+
+// Non-throwing variant — discriminated { ok, value | error }
+const result = tryNormalizeCanonicalAmount(input, "USDC");
+if (!result.ok) {
+  console.warn(result.error.code, result.error.message);
+} else {
+  submit(result.value.amount);
+}
+```
+
+Use `normalizeCanonicalAmount` instead of manually scaling strings, so submissions always
+carry the canonical precision the contract expects.
+
 See the [Multi-Asset Guide](./docs/MULTI_ASSET.md) for the full API reference, isolation
 patterns for tests, and rules for extending the registry in production.
 
 ## Documentation
 
 - [Runtime Support Matrix](./docs/SUPPORT_MATRIX.md) - Supported Node.js and browser versions
+- [Browser and Backend Usage](#browser-and-backend-usage) - Where to run the SDK, wallets, proofs, and secrets
+- [Payload Normalization](./docs/PAYLOAD_NORMALIZATION.md) - Canonicalizing payroll payloads before validation
 - [API Reference](./docs/API.md) - Complete API documentation
 - [Error Handling](./docs/ERRORS.md) - Public error hierarchy and recovery patterns
 - [ZK Proof Generation](./docs/ZK_PROOF_GENERATION.md) - Detailed proof generation guide

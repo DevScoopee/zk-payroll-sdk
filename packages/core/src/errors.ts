@@ -11,15 +11,21 @@ export {
   WalletRejectionError,
   WalletErrorCode,
   toUserFriendlyError,
+  formatRedactedError,
   DEFAULT_ERROR_MESSAGES,
   mapRpcError,
+  TimeoutFailureState,
+  classifyContractErrorCode,
+  classifyTimeoutFailure,
 } from "./core/errors";
 export type {
   ErrorContext,
   ContractErrorCodeType,
   WalletErrorCodeType,
   UserFriendlyError,
+  FormattedError,
   ErrorMessageOverrides,
+  TimeoutFailureStateType,
 } from "./core/errors";
 
 // ── Backward-compatible aliases ─────────────────────────────────────────────

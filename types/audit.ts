@@ -33,6 +33,34 @@ export interface ViewKeyRequest {
 }
 
 /**
+ * A persisted audit view key record, as stored in a compliance data store.
+ *
+ * This is the full internal model — including mutable fields such as
+ * `isActive` and `revokedAt` — that the helper functions operate on.
+ * Consumers should prefer `ViewKeyResponse` when returning data to
+ * compliance clients, and `ViewKey` when passing records into helpers.
+ */
+export interface ViewKey {
+  /** Opaque record identifier (e.g. "vk_1719578400000"). */
+  id: string;
+  /** The shareable key token (e.g. "vk_a3f9bc12de45"). */
+  keyId: string;
+  auditorName: string;
+  auditorOrg: string;
+  scope: ViewKeyScope;
+  /** Stellar public key of the admin who granted the key. */
+  grantedBy: string;
+  /** ISO-8601 timestamp of creation. */
+  createdAt: string;
+  /** ISO-8601 timestamp of expiry. */
+  expiresAt: string;
+  /** Whether the key is currently active (`false` after revocation). */
+  isActive: boolean;
+  /** ISO-8601 timestamp of revocation; present only after revocation. */
+  revokedAt?: string | null;
+}
+
+/**
  * A successfully created audit view key, ready to hand to an auditor.
  * Mirrors the `ViewKey` model but is narrowed to the fields a
  * compliance client actually needs when consuming the helper API.
