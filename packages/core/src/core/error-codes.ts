@@ -123,7 +123,8 @@ export const ERROR_CODE_REGISTRY: Record<string, ErrorCodeEntry> = {
   // ── Contract Execution ──────────────────────────────────────────────────
   SIMULATION_FAILED: {
     category: ErrorCategory.CONTRACT,
-    meaning: "The Soroban contract simulation failed before submission — likely invalid inputs or contract bug.",
+    meaning:
+      "The Soroban contract simulation failed before submission — likely invalid inputs or contract bug.",
     retryable: false,
     suggestedMessage:
       "The transaction could not be simulated. Please verify your inputs and network connection and try again.",
@@ -151,7 +152,8 @@ export const ERROR_CODE_REGISTRY: Record<string, ErrorCodeEntry> = {
   },
   CONTRACT_REVERT: {
     category: ErrorCategory.CONTRACT,
-    meaning: "The smart contract logic rejected the transaction — often due to insufficient funds or bad arguments.",
+    meaning:
+      "The smart contract logic rejected the transaction — often due to insufficient funds or bad arguments.",
     retryable: false,
     suggestedMessage:
       "The smart contract rejected the transaction. This may indicate invalid parameters or insufficient permissions.",
@@ -176,8 +178,7 @@ export const ERROR_CODE_REGISTRY: Record<string, ErrorCodeEntry> = {
   // ── Serialization ───────────────────────────────────────────────────────
   SERIALIZATION_FAILED: {
     category: ErrorCategory.SERIALIZATION,
-    meaning:
-      "Binary encoding or decoding of a proof, commitment, or payroll draft failed.",
+    meaning: "Binary encoding or decoding of a proof, commitment, or payroll draft failed.",
     retryable: false,
     suggestedMessage: "Failed to serialize or deserialize data. The data may be corrupted.",
   },
@@ -185,7 +186,8 @@ export const ERROR_CODE_REGISTRY: Record<string, ErrorCodeEntry> = {
   // ── Artifact Errors ─────────────────────────────────────────────────────
   ARTIFACT_NOT_FOUND: {
     category: ErrorCategory.ARTIFACT,
-    meaning: "A required ZK circuit artifact (wasm, zkey) could not be found at the configured path/URL.",
+    meaning:
+      "A required ZK circuit artifact (wasm, zkey) could not be found at the configured path/URL.",
     retryable: true,
     suggestedMessage:
       "A required proving artifact was not found. Please check your artifact URLs and try again.",
@@ -238,6 +240,44 @@ export const ERROR_CODE_REGISTRY: Record<string, ErrorCodeEntry> = {
       "The payroll draft contains invalid data. Please review the errors and try again.",
   },
 
+  // ── Proof Input Sanitization ────────────────────────────────────────────
+  PROOF_INPUT_INVALID_RECIPIENT: {
+    category: ErrorCategory.PROOF,
+    meaning: "Proof witness recipient field is not a valid string.",
+    retryable: false,
+    suggestedMessage: "Recipient must be a string address.",
+  },
+  PROOF_INPUT_INVALID_AMOUNT: {
+    category: ErrorCategory.PROOF,
+    meaning: "Proof witness amount field cannot be parsed as a non-negative integer.",
+    retryable: false,
+    suggestedMessage: "Amount must be a non-negative integer.",
+  },
+  PROOF_INPUT_INVALID_ASSET: {
+    category: ErrorCategory.PROOF,
+    meaning: "Proof witness asset field is not a valid string.",
+    retryable: false,
+    suggestedMessage: "Asset must be a string identifier.",
+  },
+  PROOF_INPUT_FORBIDDEN_FIELD: {
+    category: ErrorCategory.PROOF,
+    meaning: "Proof witness contains a field that is forbidden (e.g. privateKey, secret).",
+    retryable: false,
+    suggestedMessage: "The proof input contains a forbidden sensitive field.",
+  },
+  PROOF_INPUT_MISSING_REQUIRED_FIELD: {
+    category: ErrorCategory.PROOF,
+    meaning: "A required payroll witness field (recipient, amount, or asset) is missing.",
+    retryable: false,
+    suggestedMessage: "A required field is missing from the payroll proof input.",
+  },
+  PROOF_INPUT_INVALID: {
+    category: ErrorCategory.PROOF,
+    meaning: "The proof witness object is null, undefined, or not a plain object.",
+    retryable: false,
+    suggestedMessage: "Proof witness must be a non-null object.",
+  },
+
   // ── Reconciliation ──────────────────────────────────────────────────────
   RECONCILIATION_DIFF_FAILED: {
     category: ErrorCategory.RECONCILIATION,
@@ -248,7 +288,8 @@ export const ERROR_CODE_REGISTRY: Record<string, ErrorCodeEntry> = {
   },
   RECONCILIATION_UNEXPECTED_ACTIVITY: {
     category: ErrorCategory.RECONCILIATION,
-    meaning: "On-chain activity was detected with no corresponding expected outcome in the payroll run.",
+    meaning:
+      "On-chain activity was detected with no corresponding expected outcome in the payroll run.",
     retryable: false,
     suggestedMessage:
       "Unexpected on-chain activity was detected. Review the reconciliation report for details.",

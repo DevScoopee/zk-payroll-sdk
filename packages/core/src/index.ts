@@ -64,6 +64,7 @@ export {
 export type { PayrollIdempotencyKeyInput, PaymentIdempotencyKeyInput } from "./core/idempotency";
 export { Semaphore } from "./core/concurrency";
 export * from "./crypto/IProofGenerator";
+export * from "./crypto/proofInputSanitizer";
 export * from "./adapters";
 
 // ── Wallet Adapters ─────────────────────────────────────────────────────────

@@ -307,8 +307,7 @@ export const DEFAULT_ERROR_MESSAGES: Record<string, string> = {
     "Failed to generate reconciliation report. The input data may be inconsistent.",
   [ReconciliationErrorCode.UNEXPECTED_ACTIVITY]:
     "Unexpected on-chain activity was detected. Review the reconciliation report for details.",
-  SERIALIZATION_FAILED:
-    "Failed to serialize or deserialize data. The data may be corrupted.",
+  SERIALIZATION_FAILED: "Failed to serialize or deserialize data. The data may be corrupted.",
   ARTIFACT_NOT_FOUND:
     "A required proving artifact was not found. Please check your artifact URLs and try again.",
   ARTIFACT_ACCESS_DENIED:
@@ -323,6 +322,12 @@ export const DEFAULT_ERROR_MESSAGES: Record<string, string> = {
     "The batch payload contains invalid entries. Please review the validation errors and try again.",
   DRAFT_VALIDATION_FAILED:
     "The payroll draft contains invalid data. Please review the errors and try again.",
+  PROOF_INPUT_INVALID_RECIPIENT: "Recipient must be a string address.",
+  PROOF_INPUT_INVALID_AMOUNT: "Amount must be a non-negative integer.",
+  PROOF_INPUT_INVALID_ASSET: "Asset must be a string identifier.",
+  PROOF_INPUT_FORBIDDEN_FIELD: "The proof input contains a forbidden sensitive field.",
+  PROOF_INPUT_MISSING_REQUIRED_FIELD: "A required field is missing from the payroll proof input.",
+  PROOF_INPUT_INVALID: "Proof witness must be a non-null object.",
 };
 
 /** Custom message overrides keyed by error code. */
@@ -455,6 +460,12 @@ const CATEGORY_MAP: Record<string, string> = {
   ARTIFACT_HASH_MISMATCH: "Artifact",
   BATCH_VALIDATION_FAILED: "Batch",
   DRAFT_VALIDATION_FAILED: "Draft",
+  PROOF_INPUT_INVALID_RECIPIENT: "Proof Generation",
+  PROOF_INPUT_INVALID_AMOUNT: "Proof Generation",
+  PROOF_INPUT_INVALID_ASSET: "Proof Generation",
+  PROOF_INPUT_FORBIDDEN_FIELD: "Proof Generation",
+  PROOF_INPUT_MISSING_REQUIRED_FIELD: "Proof Generation",
+  PROOF_INPUT_INVALID: "Proof Generation",
   RECONCILIATION_DIFF_FAILED: "Reconciliation",
   RECONCILIATION_UNEXPECTED_ACTIVITY: "Reconciliation",
 };
