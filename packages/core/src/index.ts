@@ -156,3 +156,6 @@ export * from "./inspector";
 
 // ── Transaction Failure Classification ──────────────────────────────────────
 export * from "./classification";
+
+// Contract State Indexer
+export * from "./indexer";
