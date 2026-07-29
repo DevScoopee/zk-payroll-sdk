@@ -12,6 +12,8 @@ export interface ErrorContext {
   [key: string]: unknown;
 }
 
+import { ERROR_CODE_REGISTRY } from "./error-codes";
+
 // ── Base Error ──────────────────────────────────────────────────────────────
 
 /**
@@ -234,6 +236,17 @@ export class InvalidResponseError extends ContractExecutionError {
   }
 }
 
+// ── Reconciliation Error Codes ───────────────────────────────────────────────
+
+/** Error codes for reconciliation diff failures */
+export const ReconciliationErrorCode = {
+  DIFF_GENERATION_FAILED: "RECONCILIATION_DIFF_FAILED",
+  UNEXPECTED_ACTIVITY: "RECONCILIATION_UNEXPECTED_ACTIVITY",
+} as const;
+
+export type ReconciliationErrorCodeType =
+  (typeof ReconciliationErrorCode)[keyof typeof ReconciliationErrorCode];
+
 // ── Validation Errors ───────────────────────────────────────────────────────
 
 /**
@@ -290,6 +303,26 @@ export const DEFAULT_ERROR_MESSAGES: Record<string, string> = {
   [WalletErrorCode.INVALID_XDR]:
     "The transaction data is invalid. This may indicate a software bug.",
   [WalletErrorCode.UNKNOWN_ERROR]: "An unexpected wallet error occurred. Please try again.",
+  [ReconciliationErrorCode.DIFF_GENERATION_FAILED]:
+    "Failed to generate reconciliation report. The input data may be inconsistent.",
+  [ReconciliationErrorCode.UNEXPECTED_ACTIVITY]:
+    "Unexpected on-chain activity was detected. Review the reconciliation report for details.",
+  SERIALIZATION_FAILED:
+    "Failed to serialize or deserialize data. The data may be corrupted.",
+  ARTIFACT_NOT_FOUND:
+    "A required proving artifact was not found. Please check your artifact URLs and try again.",
+  ARTIFACT_ACCESS_DENIED:
+    "Access to proving artifacts was denied. Please check your permissions and try again.",
+  ARTIFACT_CORRUPT:
+    "A proving artifact appears to be corrupt. The SDK will attempt to re-download it.",
+  ARTIFACT_FETCH_FAILED:
+    "Failed to download a proving artifact. Please check your network connection and try again.",
+  ARTIFACT_HASH_MISMATCH:
+    "The downloaded proving artifact does not match its expected checksum. The SDK will retry.",
+  BATCH_VALIDATION_FAILED:
+    "The batch payload contains invalid entries. Please review the validation errors and try again.",
+  DRAFT_VALIDATION_FAILED:
+    "The payroll draft contains invalid data. Please review the errors and try again.",
 };
 
 /** Custom message overrides keyed by error code. */
@@ -414,15 +447,23 @@ const CATEGORY_MAP: Record<string, string> = {
   WALLET_NETWORK_MISMATCH: "Wallet",
   WALLET_INVALID_XDR: "Wallet",
   WALLET_UNKNOWN_ERROR: "Wallet",
+  SERIALIZATION_FAILED: "Serialization",
+  ARTIFACT_NOT_FOUND: "Artifact",
+  ARTIFACT_ACCESS_DENIED: "Artifact",
+  ARTIFACT_CORRUPT: "Artifact",
+  ARTIFACT_FETCH_FAILED: "Artifact",
+  ARTIFACT_HASH_MISMATCH: "Artifact",
+  BATCH_VALIDATION_FAILED: "Batch",
+  DRAFT_VALIDATION_FAILED: "Draft",
+  RECONCILIATION_DIFF_FAILED: "Reconciliation",
+  RECONCILIATION_UNEXPECTED_ACTIVITY: "Reconciliation",
 };
 
-const RETRYABLE_CODES = new Set<string>([
-  ContractErrorCode.TRANSACTION_TIMEOUT,
-  ContractErrorCode.RPC_TIMEOUT,
-  ContractErrorCode.INSUFFICIENT_FEE,
-  ContractErrorCode.TRANSACTION_SUBMISSION_FAILED,
-  ContractErrorCode.INVALID_RESPONSE,
-]);
+const RETRYABLE_CODES = new Set<string>(
+  Object.entries(ERROR_CODE_REGISTRY)
+    .filter(([, entry]) => entry.retryable)
+    .map(([code]) => code)
+);
 
 /**
  * Strips sensitive field values from an error message, replacing them

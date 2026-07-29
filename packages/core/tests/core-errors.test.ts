@@ -5,11 +5,19 @@ import {
   ContractExecutionError,
   ValidationError,
   ContractErrorCode,
+  WalletErrorCode,
+  ReconciliationErrorCode,
   mapRpcError,
   toUserFriendlyError,
   TimeoutFailureState,
   classifyContractErrorCode,
   classifyTimeoutFailure,
+  ErrorCategory,
+  ERROR_CODE_REGISTRY,
+  getErrorCategory,
+  isRetryableErrorCode,
+  getSuggestedMessage,
+  getErrorCodesByCategory,
 } from "../src/errors";
 import { PayrollError } from "../src/errors";
 
@@ -467,6 +475,146 @@ describe("Core Error Classes", () => {
     it("defaults UNKNOWN_RPC_ERROR to UNKNOWN", () => {
       const err = new ContractExecutionError("unknown");
       expect(err.failureState).toBe(TimeoutFailureState.UNKNOWN);
+    });
+  });
+
+  // ── Reconciliation Error Codes ─────────────────────────────────────────────
+
+  describe("ReconciliationErrorCode", () => {
+    it("defines DIFF_GENERATION_FAILED", () => {
+      expect(ReconciliationErrorCode.DIFF_GENERATION_FAILED).toBe(
+        "RECONCILIATION_DIFF_FAILED"
+      );
+    });
+
+    it("defines UNEXPECTED_ACTIVITY", () => {
+      expect(ReconciliationErrorCode.UNEXPECTED_ACTIVITY).toBe(
+        "RECONCILIATION_UNEXPECTED_ACTIVITY"
+      );
+    });
+  });
+
+  // ── Centralized Error Code Registry ────────────────────────────────────────
+
+  describe("ERROR_CODE_REGISTRY", () => {
+    it("includes all validation error codes", () => {
+      expect(ERROR_CODE_REGISTRY.VALIDATION_ERROR).toBeDefined();
+      expect(ERROR_CODE_REGISTRY.VALIDATION_ERROR.category).toBe(ErrorCategory.VALIDATION);
+    });
+
+    it("includes all wallet error codes", () => {
+      expect(ERROR_CODE_REGISTRY[WalletErrorCode.NOT_INSTALLED]).toBeDefined();
+      expect(ERROR_CODE_REGISTRY[WalletErrorCode.NOT_CONNECTED]).toBeDefined();
+      expect(ERROR_CODE_REGISTRY[WalletErrorCode.CONNECTION_REJECTED]).toBeDefined();
+      expect(ERROR_CODE_REGISTRY[WalletErrorCode.SIGNING_REJECTED]).toBeDefined();
+      expect(ERROR_CODE_REGISTRY[WalletErrorCode.NETWORK_MISMATCH]).toBeDefined();
+      expect(ERROR_CODE_REGISTRY[WalletErrorCode.INVALID_XDR]).toBeDefined();
+      expect(ERROR_CODE_REGISTRY[WalletErrorCode.UNKNOWN_ERROR]).toBeDefined();
+    });
+
+    it("includes all contract error codes", () => {
+      expect(ERROR_CODE_REGISTRY[ContractErrorCode.SIMULATION_FAILED]).toBeDefined();
+      expect(ERROR_CODE_REGISTRY[ContractErrorCode.TRANSACTION_SUBMISSION_FAILED]).toBeDefined();
+      expect(ERROR_CODE_REGISTRY[ContractErrorCode.TRANSACTION_TIMEOUT]).toBeDefined();
+      expect(ERROR_CODE_REGISTRY[ContractErrorCode.RPC_TIMEOUT]).toBeDefined();
+      expect(ERROR_CODE_REGISTRY[ContractErrorCode.INSUFFICIENT_FEE]).toBeDefined();
+      expect(ERROR_CODE_REGISTRY[ContractErrorCode.CONTRACT_REVERT]).toBeDefined();
+      expect(ERROR_CODE_REGISTRY[ContractErrorCode.INVALID_RESPONSE]).toBeDefined();
+      expect(ERROR_CODE_REGISTRY[ContractErrorCode.UNKNOWN_RPC_ERROR]).toBeDefined();
+    });
+
+    it("includes reconciliation error codes", () => {
+      expect(ERROR_CODE_REGISTRY[ReconciliationErrorCode.DIFF_GENERATION_FAILED]).toBeDefined();
+      expect(ERROR_CODE_REGISTRY[ReconciliationErrorCode.UNEXPECTED_ACTIVITY]).toBeDefined();
+    });
+
+    it("includes proof, network, serialization, batch, and draft error codes", () => {
+      expect(ERROR_CODE_REGISTRY.PROOF_GENERATION_FAILED).toBeDefined();
+      expect(ERROR_CODE_REGISTRY.NETWORK_ERROR).toBeDefined();
+      expect(ERROR_CODE_REGISTRY.SERIALIZATION_FAILED).toBeDefined();
+      expect(ERROR_CODE_REGISTRY.BATCH_VALIDATION_FAILED).toBeDefined();
+      expect(ERROR_CODE_REGISTRY.DRAFT_VALIDATION_FAILED).toBeDefined();
+    });
+
+    it("includes artifact error codes", () => {
+      expect(ERROR_CODE_REGISTRY.ARTIFACT_NOT_FOUND).toBeDefined();
+      expect(ERROR_CODE_REGISTRY.ARTIFACT_ACCESS_DENIED).toBeDefined();
+      expect(ERROR_CODE_REGISTRY.ARTIFACT_CORRUPT).toBeDefined();
+      expect(ERROR_CODE_REGISTRY.ARTIFACT_FETCH_FAILED).toBeDefined();
+      expect(ERROR_CODE_REGISTRY.ARTIFACT_HASH_MISMATCH).toBeDefined();
+    });
+
+    it("every entry has required fields", () => {
+      for (const [code, entry] of Object.entries(ERROR_CODE_REGISTRY)) {
+        expect(entry.category).toBeDefined();
+        expect(entry.meaning).toBeDefined();
+        expect(typeof entry.retryable).toBe("boolean");
+        expect(entry.suggestedMessage).toBeDefined();
+      }
+    });
+  });
+
+  describe("getErrorCategory", () => {
+    it("returns the category for a known code", () => {
+      expect(getErrorCategory("VALIDATION_ERROR")).toBe(ErrorCategory.VALIDATION);
+      expect(getErrorCategory("WALLET_SIGNING_REJECTED")).toBe(ErrorCategory.WALLET);
+      expect(getErrorCategory("RPC_TIMEOUT")).toBe(ErrorCategory.RPC);
+      expect(getErrorCategory("PROOF_GENERATION_FAILED")).toBe(ErrorCategory.PROOF);
+      expect(getErrorCategory("SIMULATION_FAILED")).toBe(ErrorCategory.CONTRACT);
+      expect(getErrorCategory("RECONCILIATION_DIFF_FAILED")).toBe(ErrorCategory.RECONCILIATION);
+      expect(getErrorCategory("NETWORK_ERROR")).toBe(ErrorCategory.NETWORK);
+    });
+
+    it("returns 'unknown' for an unrecognized code", () => {
+      expect(getErrorCategory("NONEXISTENT_CODE")).toBe("unknown");
+    });
+  });
+
+  describe("isRetryableErrorCode", () => {
+    it("returns true for retryable codes", () => {
+      expect(isRetryableErrorCode("RPC_TIMEOUT")).toBe(true);
+      expect(isRetryableErrorCode("NETWORK_ERROR")).toBe(true);
+      expect(isRetryableErrorCode("TRANSACTION_TIMEOUT")).toBe(true);
+    });
+
+    it("returns false for non-retryable codes", () => {
+      expect(isRetryableErrorCode("VALIDATION_ERROR")).toBe(false);
+      expect(isRetryableErrorCode("SIMULATION_FAILED")).toBe(false);
+    });
+
+    it("returns false for unrecognized codes", () => {
+      expect(isRetryableErrorCode("NONEXISTENT_CODE")).toBe(false);
+    });
+  });
+
+  describe("getSuggestedMessage", () => {
+    it("returns the suggested message for a known code", () => {
+      const msg = getSuggestedMessage("VALIDATION_ERROR");
+      expect(msg).toContain("validation");
+    });
+
+    it("returns undefined for an unrecognized code", () => {
+      expect(getSuggestedMessage("NONEXISTENT_CODE")).toBeUndefined();
+    });
+  });
+
+  describe("getErrorCodesByCategory", () => {
+    it("returns all wallet error codes", () => {
+      const walletCodes = getErrorCodesByCategory(ErrorCategory.WALLET);
+      expect(walletCodes).toContain("WALLET_NOT_INSTALLED");
+      expect(walletCodes).toContain("WALLET_SIGNING_REJECTED");
+    });
+
+    it("returns all contract error codes", () => {
+      const contractCodes = getErrorCodesByCategory(ErrorCategory.CONTRACT);
+      expect(contractCodes).toContain("SIMULATION_FAILED");
+      expect(contractCodes).toContain("CONTRACT_REVERT");
+    });
+
+    it("returns all reconciliation error codes", () => {
+      const reconCodes = getErrorCodesByCategory(ErrorCategory.RECONCILIATION);
+      expect(reconCodes).toContain("RECONCILIATION_DIFF_FAILED");
+      expect(reconCodes).toContain("RECONCILIATION_UNEXPECTED_ACTIVITY");
     });
   });
 });

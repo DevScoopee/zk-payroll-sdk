@@ -28,19 +28,29 @@ export {
   WalletError,
   WalletRejectionError,
   WalletErrorCode,
+  ReconciliationErrorCode,
   toUserFriendlyError,
   formatRedactedError,
   DEFAULT_ERROR_MESSAGES,
   mapRpcError,
   PayrollError,
+  ErrorCategory,
+  ERROR_CODE_REGISTRY,
+  getErrorCategory,
+  isRetryableErrorCode,
+  getSuggestedMessage,
+  getErrorCodesByCategory,
 } from "./errors";
 export type {
   ErrorContext,
   ContractErrorCodeType,
   WalletErrorCodeType,
+  ReconciliationErrorCodeType,
   UserFriendlyError,
   FormattedError,
   ErrorMessageOverrides,
+  ErrorCategoryType,
+  ErrorCodeEntry,
 } from "./errors";
 export { DEFAULT_CONFIG } from "./config";
 export * from "./cache";
