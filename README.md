@@ -511,6 +511,7 @@ patterns for tests, and rules for extending the registry in production.
 
 ## Documentation
 
+- [Terminology Guide](./docs/terminology.md) - Canonical names for concepts shared across contracts, SDK, and dashboard
 - [Runtime Support Matrix](./docs/SUPPORT_MATRIX.md) - Supported Node.js and browser versions
 - [Browser and Backend Usage](#browser-and-backend-usage) - Where to run the SDK, wallets, proofs, and secrets
 - [Payload Normalization](./docs/PAYLOAD_NORMALIZATION.md) - Canonicalizing payroll payloads before validation
