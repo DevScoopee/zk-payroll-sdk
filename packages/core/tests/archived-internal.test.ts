@@ -128,9 +128,6 @@ describe("applyArchiveQuery", () => {
     const JAN_15 = 1705276800;
     const JAN_10 = JAN_15 - 5 * 86400;
     const JAN_20 = JAN_15 + 5 * 86400;
-    const JAN_01 = 1704067200;
-    const JAN_31 = 1706745600;
-
     it("filters records before periodStart", () => {
       const records = [
         makeRecord({ timestamp: JAN_10 }),

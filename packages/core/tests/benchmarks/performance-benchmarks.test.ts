@@ -199,17 +199,9 @@ async function simulateCacheLookup(): Promise<void> {
  * witness encoding + witness key generation + simulated proof compute.
  */
 async function simulateCacheMissWorkflow(): Promise<void> {
-  const recipient = "GALICETEST123456789012345678901234567890";
-  const amount = 1_000_000n;
-  const asset = "native";
-
-  // Step 1: Encode witness
-  const witness = {
-    recipient,
-    amount: amount.toString(),
-    asset,
-  };
-  const witnessKey = `proof:${JSON.stringify(witness)}`;
+  const _recipient = "GALICETEST123456789012345678901234567890";
+  const _amount = 1_000_000n;
+  const _asset = "native";
 
   // Step 2: Simulate proof compute (simplified)
   const proof = {
