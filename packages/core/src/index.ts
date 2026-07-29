@@ -124,6 +124,8 @@ export * from "./redaction";
 // ── Multi-Asset Metadata ────────────────────────────────────────────────────
 export * from "./assets";
 
+// ── Transaction Status Mapping ──────────────────────────────────────────────
+export * from "./transactions";
 // ── Payload Normalization ───────────────────────────────────────────────────
 export * from "./normalization";
 
