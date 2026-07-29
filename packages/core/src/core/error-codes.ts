@@ -44,6 +44,13 @@ export const ERROR_CODE_REGISTRY: Record<string, ErrorCodeEntry> = {
     suggestedMessage:
       "The provided parameters failed validation. Please review your inputs and try again.",
   },
+  CONFIG_VALIDATION_ERROR: {
+    category: ErrorCategory.VALIDATION,
+    meaning: "SDK configuration validation failed — one or more config values are missing or invalid.",
+    retryable: false,
+    suggestedMessage:
+      "SDK configuration validation failed. Please check your network, RPC URL, contract IDs, and feature flags.",
+  },
 
   // ── Wallet ──────────────────────────────────────────────────────────────
   WALLET_NOT_INSTALLED: {
