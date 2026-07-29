@@ -1,4 +1,8 @@
-export type { ExecutionStatus, PaymentExecutionOutcome, PayrollExecutionSummary } from "./types";
+export type {
+  ExecutionStatus,
+  PaymentExecutionOutcome,
+  PayrollExecutionSummary,
+} from "./types";
 
 export {
   createExecutionSummary,
@@ -6,3 +10,7 @@ export {
   failedOutcome,
   pendingOutcome,
 } from "./PayrollExecutionSummary";
+
+export type { PayrollCommandInput, PayrollCommandSummary } from "./PayrollCommandSummary";
+export { summarizePayrollCommand, formatPayrollCommandPrompt } from "./PayrollCommandSummary";
+

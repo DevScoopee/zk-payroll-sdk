@@ -70,12 +70,15 @@ describe("PayrollContractWrapper", () => {
       getPublicKey: jest.fn().mockResolvedValue(TEST_RECIPIENT),
       sign: jest.fn().mockImplementation(async (tx) => tx),
     };
-    wrapper.buildInvocationStub.mockResolvedValue({
-      method: "private_pay",
-      requestId: "req-stub",
-      network: Networks.TESTNET,
-      transaction: {} as unknown as PreparedInvocation["transaction"],
-    } satisfies PreparedInvocation);
+    wrapper.buildInvocationStub.mockImplementation(
+      async (method: string, args: unknown[], sourcePublicKey: string, network?: string, requestId?: string) =>
+        ({
+          method,
+          requestId: requestId ?? "req-stub",
+          network: network ?? Networks.TESTNET,
+          transaction: {} as unknown as PreparedInvocation["transaction"],
+        } satisfies PreparedInvocation)
+    );
   });
 
   describe("privatePay", () => {
