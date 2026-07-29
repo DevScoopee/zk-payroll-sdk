@@ -31,7 +31,7 @@ describe("mapTransactionStatus", () => {
       envelopeXdr: {} as never,
       resultXdr: {} as never,
       resultMetaXdr: {} as never,
-    } as any;
+    } as unknown as rpc.Api.GetSuccessfulTransactionResponse;
 
     const result: NormalizedTransactionStatus = mapTransactionStatus(mockResponse);
 
@@ -48,7 +48,7 @@ describe("mapTransactionStatus", () => {
       hash: "tx_hash_fail_456",
       resultXdr: "AAAA...",
       resultMetaXdr: "BBBB...",
-    } as any;
+    } as unknown as rpc.Api.GetFailedTransactionResponse;
 
     const result: NormalizedTransactionStatus = mapTransactionStatus(mockResponse);
 
@@ -56,15 +56,15 @@ describe("mapTransactionStatus", () => {
     expect(result.rawStatus).toBe(rpc.Api.GetTransactionStatus.FAILED);
     expect(result.txHash).toBe("tx_hash_fail_456");
     expect(result.errorDetails).toBeDefined();
-    expect(result.errorDetails.resultXdr).toBe("AAAA...");
-    expect(result.errorDetails.resultMetaXdr).toBe("BBBB...");
+    expect((result.errorDetails as Record<string, string>).resultXdr).toBe("AAAA...");
+    expect((result.errorDetails as Record<string, string>).resultMetaXdr).toBe("BBBB...");
   });
 
   it("should map a NOT_FOUND response to pending", () => {
     const mockResponse: rpc.Api.GetMissingTransactionResponse = {
       status: rpc.Api.GetTransactionStatus.NOT_FOUND,
       hash: "tx_hash_pending_789",
-    } as any;
+    } as unknown as rpc.Api.GetMissingTransactionResponse;
 
     const result: NormalizedTransactionStatus = mapTransactionStatus(mockResponse);
 
@@ -77,7 +77,7 @@ describe("mapTransactionStatus", () => {
     const mockResponse = {
       status: "WEIRD_STATUS",
       hash: "malformed_hash",
-    } as any;
+    } as unknown as rpc.Api.GetTransactionResponse;
 
     const result: NormalizedTransactionStatus = mapTransactionStatus(mockResponse);
 

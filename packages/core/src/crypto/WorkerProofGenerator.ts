@@ -1,5 +1,5 @@
 import { IProofGenerator, ProofPayload, ProofGeneratorConfig, witnessKey } from "./IProofGenerator";
-import { WorkerRequest, WorkerResponse, ProofProgressStage } from "./WorkerMessages";
+import type { WorkerRequest, WorkerResponse } from "./WorkerMessages";
 import { PayrollError } from "../errors";
 import { IdempotencyRegistry } from "../core/idempotency";
 
@@ -135,7 +135,11 @@ export class WorkerProofGenerator implements IProofGenerator {
 
       case "PROGRESS":
         for (const cb of pending.progressCallbacks) {
-          const rawStage = "event" in msg && msg.event ? msg.event.stage : (msg as any).stage;
+          const rawMsg = msg as unknown as Record<string, unknown>;
+          const rawStage: string | undefined =
+            "event" in msg && msg.event
+              ? msg.event.stage
+              : (rawMsg.stage as string | undefined);
           const mappedStage: PayrollProgressStage =
             rawStage === "loading_zkey"
               ? "proof_loading_zkey"
@@ -145,7 +149,7 @@ export class WorkerProofGenerator implements IProofGenerator {
                   ? "proof_generating"
                   : rawStage === "done"
                     ? "proof_done"
-                    : (rawStage ?? "proof_generating");
+                    : "proof_generating";
 
           const event: PayrollProgressEvent =
             "event" in msg && msg.event
@@ -154,7 +158,7 @@ export class WorkerProofGenerator implements IProofGenerator {
                   operation: "proof",
                   stage: mappedStage,
                   message: "Generating proof",
-                  progress: (msg as any).progress,
+                  progress: rawMsg.progress as number | undefined,
                   timestamp: new Date().toISOString(),
                 };
           cb(event);

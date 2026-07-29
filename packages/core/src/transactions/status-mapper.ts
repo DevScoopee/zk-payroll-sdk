@@ -20,7 +20,7 @@ export function mapTransactionStatus(
   }
 
   // Attempt to extract the hash if available
-  const txHash = "hash" in response ? (response as any).hash : undefined;
+  const txHash = "hash" in response ? (response as Record<string, unknown>).hash as string | undefined : undefined;
 
   switch (response.status) {
     case rpc.Api.GetTransactionStatus.SUCCESS: {
@@ -57,7 +57,7 @@ export function mapTransactionStatus(
     default: {
       return {
         status: "unknown",
-        rawStatus: (response as any).status || "unknown",
+        rawStatus: ((response as Record<string, unknown>).status as string) || "unknown",
         txHash,
         errorDetails: "Unrecognized status in RPC response",
       };

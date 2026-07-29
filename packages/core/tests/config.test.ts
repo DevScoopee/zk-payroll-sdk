@@ -1,4 +1,4 @@
-import { ConfigBuilder, ConfigPresets, ClientConfig } from "../src/config";
+import { ConfigBuilder, ConfigPresets } from "../src/config";
 
 describe("ConfigBuilder and ConfigPresets", () => {
   it("should build a valid config", () => {
@@ -45,7 +45,7 @@ describe("ConfigBuilder and ConfigPresets", () => {
     const builder = new ConfigBuilder()
       .withNetworkUrl("http://localhost:8000")
       .withContractId("CAKZGMMMJOHMSZ5V3DYKCUDNTIWBG57MAMFJDSVICNWUNVXLX6EZN3NC")
-      .withProofConfig({ wasmUrl: "http://example.com/circuit.wasm" } as any);
+      .withProofConfig({ wasmUrl: "http://example.com/circuit.wasm" } as never);
 
     expect(() => builder.build()).toThrow("proofConfig.zkeyUrl is required.");
   });
