@@ -52,7 +52,20 @@ export type {
   ErrorCategoryType,
   ErrorCodeEntry,
 } from "./errors";
-export { DEFAULT_CONFIG } from "./config";
+export {
+  DEFAULT_CONFIG,
+  ConfigPresets,
+  ConfigBuilder,
+  validateConfig,
+  assertValidConfig,
+} from "./config";
+export type {
+  ClientConfig,
+  RetryPolicyConfig,
+  FeatureFlagsConfig,
+  ConfigValidationErrorDetail,
+  ConfigValidationResult,
+} from "./config";
 export * from "./cache";
 export * from "./types";
 export * from "./progress";
