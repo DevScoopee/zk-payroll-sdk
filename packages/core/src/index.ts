@@ -108,6 +108,9 @@ export * from "./clients";
 // ── Environment Sanity Checker ──────────────────────────────────────────────
 export * from "./sanity";
 
+// ── Proof Readiness Checker ─────────────────────────────────────────────────
+export * from "./proof-readiness";
+
 // ── Transaction Simulation ──────────────────────────────────────────────────
 export * from "./simulation";
 
