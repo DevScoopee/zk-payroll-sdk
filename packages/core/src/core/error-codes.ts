@@ -44,6 +44,13 @@ export const ERROR_CODE_REGISTRY: Record<string, ErrorCodeEntry> = {
     suggestedMessage:
       "The provided parameters failed validation. Please review your inputs and try again.",
   },
+  CONFIG_VALIDATION_ERROR: {
+    category: ErrorCategory.VALIDATION,
+    meaning: "SDK configuration validation failed — one or more config values are missing or invalid.",
+    retryable: false,
+    suggestedMessage:
+      "SDK configuration validation failed. Please check your network, RPC URL, contract IDs, and feature flags.",
+  },
 
   // ── Wallet ──────────────────────────────────────────────────────────────
   WALLET_NOT_INSTALLED: {
@@ -229,6 +236,13 @@ export const ERROR_CODE_REGISTRY: Record<string, ErrorCodeEntry> = {
     retryable: false,
     suggestedMessage:
       "The batch payload contains invalid entries. Please review the validation errors and try again.",
+  },
+  EMPLOYEE_BATCH_VALIDATION_FAILED: {
+    category: ErrorCategory.BATCH,
+    meaning: "Employee batch validation failed — one or more employee records are invalid.",
+    retryable: false,
+    suggestedMessage:
+      "The employee batch contains invalid records. Please review the validation errors and try again.",
   },
 
   // ── Draft Validation ────────────────────────────────────────────────────

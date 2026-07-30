@@ -52,7 +52,20 @@ export type {
   ErrorCategoryType,
   ErrorCodeEntry,
 } from "./errors";
-export { DEFAULT_CONFIG } from "./config";
+export {
+  DEFAULT_CONFIG,
+  ConfigPresets,
+  ConfigBuilder,
+  validateConfig,
+  assertValidConfig,
+} from "./config";
+export type {
+  ClientConfig,
+  RetryPolicyConfig,
+  FeatureFlagsConfig,
+  ConfigValidationErrorDetail,
+  ConfigValidationResult,
+} from "./config";
 export * from "./cache";
 export * from "./types";
 export * from "./progress";
@@ -64,7 +77,8 @@ export {
 export type { PayrollIdempotencyKeyInput, PaymentIdempotencyKeyInput } from "./core/idempotency";
 export { Semaphore } from "./core/concurrency";
 export * from "./crypto/IProofGenerator";
-export * from "./crypto/proofInputSanitizer";
+export { resolveProofConfig, resolveProofConfigFromEnv } from "./crypto/ProofConfigResolver";
+export type { ProofConfigResolverOptions } from "./crypto/ProofConfigResolver";
 export * from "./adapters";
 
 // ── Wallet Adapters ─────────────────────────────────────────────────────────
@@ -107,6 +121,9 @@ export * from "./clients";
 // ── Environment Sanity Checker ──────────────────────────────────────────────
 export * from "./sanity";
 
+// ── Proof Readiness Checker ─────────────────────────────────────────────────
+export * from "./proof-readiness";
+
 // ── Transaction Simulation ──────────────────────────────────────────────────
 export * from "./simulation";
 
@@ -142,6 +159,9 @@ export * from "./audit";
 // ── Webhook Verification ────────────────────────────────────────────────────
 export * from "./webhooks";
 
+// ── Payroll Lifecycle Event Aggregator ──────────────────────────────────────
+export * from "./lifecycle";
+
 // ── Environment Capability Detector ─────────────────────────────────────────
 export * from "./env";
 
@@ -155,3 +175,9 @@ export * from "./inspector";
 
 // ── Transaction Failure Classification ──────────────────────────────────────
 export * from "./classification";
+
+// Contract State Indexer
+export * from "./indexer";
+
+// Proof Artifact Lifecycle
+export * from "./artifacts";

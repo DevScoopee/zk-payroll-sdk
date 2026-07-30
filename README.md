@@ -34,13 +34,37 @@ await service.processPayment(
 );
 ```
 
-### Configuration Validations
+### Configuration & Schema Validation
 
-The `ConfigBuilder` fails fast if required configuration is missing or malformed:
+The SDK enforces strict schema validation for all configuration parameters (`network`, `rpcUrl`/`networkUrl`, `contractId`/`contractIds`, `proofConfig`, `retryPolicy`, and `featureFlags`) before operations run.
+
+#### Minimal Valid Config Example
+```typescript
+import { ConfigPresets, validateConfig, assertValidConfig } from "@zk-payroll/sdk";
+
+// Using ConfigPresets for a minimal valid setup:
+const config = ConfigPresets.testnet()
+  .withContractId("CAKZGMMMJOHMSZ5V3DYKCUDNTIWBG57MAMFJDSVICNWUNVXLX6EZN3NC")
+  .build();
+
+// Direct schema validation utility
+const validation = validateConfig(config);
+if (!validation.isValid) {
+  console.error("Config errors:", validation.errors);
+}
+
+// Asserts configuration validity or throws structured ValidationError
+assertValidConfig(config);
+```
+
+#### Invalid Configuration Handling
+The `ConfigBuilder` and `assertValidConfig` fail fast with structured `ValidationError` (`code: CONFIG_VALIDATION_ERROR`) if required fields are missing or malformed:
 
 ```typescript
-// Throws Error: "Configuration validation failed:\n- contractId is malformed: invalid_id"
+// Throws ValidationError: "Configuration validation failed:\n- contractId is malformed: invalid_id"
 ConfigPresets.testnet().withContractId("invalid_id").build();
+```
+
 ## Idempotent retries
 
 For safe retries, pass an `idempotencyKey` when processing a payment.
@@ -141,6 +165,7 @@ Proof APIs and witness shapes: [ZK Proof Generation](./docs/ZK_PROOF_GENERATION.
 
 ### Related docs
 
+- [Browser and Server Usage Guide](./docs/BROWSER_AND_SERVER_USAGE.md)
 - [Runtime Support Matrix](./docs/SUPPORT_MATRIX.md)
 - [Wallet Adapters](./docs/WALLET_ADAPTERS.md)
 - [ZK Proof Generation](./docs/ZK_PROOF_GENERATION.md)

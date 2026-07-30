@@ -320,6 +320,8 @@ export const DEFAULT_ERROR_MESSAGES: Record<string, string> = {
     "The downloaded proving artifact does not match its expected checksum. The SDK will retry.",
   BATCH_VALIDATION_FAILED:
     "The batch payload contains invalid entries. Please review the validation errors and try again.",
+  EMPLOYEE_BATCH_VALIDATION_FAILED:
+    "The employee batch contains invalid records. Please review the validation errors and try again.",
   DRAFT_VALIDATION_FAILED:
     "The payroll draft contains invalid data. Please review the errors and try again.",
   PROOF_INPUT_INVALID_RECIPIENT: "Recipient must be a string address.",
@@ -459,6 +461,7 @@ const CATEGORY_MAP: Record<string, string> = {
   ARTIFACT_FETCH_FAILED: "Artifact",
   ARTIFACT_HASH_MISMATCH: "Artifact",
   BATCH_VALIDATION_FAILED: "Batch",
+  EMPLOYEE_BATCH_VALIDATION_FAILED: "Batch",
   DRAFT_VALIDATION_FAILED: "Draft",
   PROOF_INPUT_INVALID_RECIPIENT: "Proof Generation",
   PROOF_INPUT_INVALID_AMOUNT: "Proof Generation",

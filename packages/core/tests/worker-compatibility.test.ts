@@ -382,7 +382,7 @@ describe("Browser Worker Compatibility - Proof Generation APIs", () => {
     });
 
     it("handles termination errors", async () => {
-      const { worker, generator } = setup();
+      const { generator } = setup();
       const promise = generator.generateProof({ amount: 100n });
 
       generator.terminate();
@@ -654,7 +654,7 @@ describe("Browser Worker Compatibility - Proof Generation APIs", () => {
       const { worker, generator } = setup();
       const witness = { recipient: "GABC", amount: 5000n };
 
-      generator.generateProof(witness);
+      void generator.generateProof(witness);
       const req = worker.lastRequest();
 
       expect(req).toHaveProperty("type");
@@ -674,7 +674,7 @@ describe("Browser Worker Compatibility - Proof Generation APIs", () => {
     it("sends correctly formatted PRELOAD_ARTIFACTS messages", async () => {
       const { worker, generator } = setup();
 
-      generator.preloadArtifacts();
+      void generator.preloadArtifacts();
       const req = worker.lastRequest();
 
       expect(req).toHaveProperty("type");
@@ -691,7 +691,7 @@ describe("Browser Worker Compatibility - Proof Generation APIs", () => {
     it("sends correctly formatted CLEAR_CACHE messages", async () => {
       const { worker, generator } = setup();
 
-      generator.clearCache();
+      void generator.clearCache();
       const req = worker.lastRequest();
 
       expect(req).toHaveProperty("type");

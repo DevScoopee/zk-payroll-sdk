@@ -1,5 +1,9 @@
 import { rpc } from "@stellar/stellar-sdk";
-import { mapTransactionStatus } from "../../src/transactions/status-mapper";
+import {
+  mapTransactionStatus,
+  mapContractStatus,
+  mapPayrollStatus,
+} from "../../src/transactions/status-mapper";
 import { NormalizedTransactionStatus } from "../../src/transactions/types";
 
 describe("mapTransactionStatus", () => {
@@ -27,7 +31,7 @@ describe("mapTransactionStatus", () => {
       envelopeXdr: {} as never,
       resultXdr: {} as never,
       resultMetaXdr: {} as never,
-    } as any;
+    } as unknown as rpc.Api.GetSuccessfulTransactionResponse;
 
     const result: NormalizedTransactionStatus = mapTransactionStatus(mockResponse);
 
@@ -44,7 +48,7 @@ describe("mapTransactionStatus", () => {
       hash: "tx_hash_fail_456",
       resultXdr: "AAAA...",
       resultMetaXdr: "BBBB...",
-    } as any;
+    } as unknown as rpc.Api.GetFailedTransactionResponse;
 
     const result: NormalizedTransactionStatus = mapTransactionStatus(mockResponse);
 
@@ -52,15 +56,15 @@ describe("mapTransactionStatus", () => {
     expect(result.rawStatus).toBe(rpc.Api.GetTransactionStatus.FAILED);
     expect(result.txHash).toBe("tx_hash_fail_456");
     expect(result.errorDetails).toBeDefined();
-    expect(result.errorDetails.resultXdr).toBe("AAAA...");
-    expect(result.errorDetails.resultMetaXdr).toBe("BBBB...");
+    expect((result.errorDetails as Record<string, string>).resultXdr).toBe("AAAA...");
+    expect((result.errorDetails as Record<string, string>).resultMetaXdr).toBe("BBBB...");
   });
 
   it("should map a NOT_FOUND response to pending", () => {
     const mockResponse: rpc.Api.GetMissingTransactionResponse = {
       status: rpc.Api.GetTransactionStatus.NOT_FOUND,
       hash: "tx_hash_pending_789",
-    } as any;
+    } as unknown as rpc.Api.GetMissingTransactionResponse;
 
     const result: NormalizedTransactionStatus = mapTransactionStatus(mockResponse);
 
@@ -73,7 +77,7 @@ describe("mapTransactionStatus", () => {
     const mockResponse = {
       status: "WEIRD_STATUS",
       hash: "malformed_hash",
-    } as any;
+    } as unknown as rpc.Api.GetTransactionResponse;
 
     const result: NormalizedTransactionStatus = mapTransactionStatus(mockResponse);
 
@@ -81,5 +85,44 @@ describe("mapTransactionStatus", () => {
     expect(result.rawStatus).toBe("WEIRD_STATUS");
     expect(result.txHash).toBe("malformed_hash");
     expect(result.errorDetails).toBe("Unrecognized status in RPC response");
+  });
+});
+
+describe("mapContractStatus (Issue #230)", () => {
+  it("maps raw string and numeric contract statuses into typed status model", () => {
+    expect(mapContractStatus("EXECUTED").status).toBe("confirmed");
+    expect(mapContractStatus("SUCCESS").status).toBe("confirmed");
+    expect(mapContractStatus(0).status).toBe("confirmed");
+
+    expect(mapContractStatus("SUBMITTED").status).toBe("pending");
+    expect(mapContractStatus(1).status).toBe("pending");
+
+    expect(mapContractStatus("REVERTED").status).toBe("failed");
+    expect(mapContractStatus("CANCELLED").status).toBe("failed");
+    expect(mapContractStatus(2).status).toBe("failed");
+
+    expect(mapContractStatus("EXPIRED").status).toBe("expired");
+    expect(mapContractStatus(3).status).toBe("expired");
+
+    expect(mapContractStatus("RETRYABLE").status).toBe("retryable");
+    expect(mapContractStatus(4).status).toBe("retryable");
+
+    expect(mapContractStatus(null).status).toBe("unknown");
+    expect(mapContractStatus(undefined).status).toBe("unknown");
+  });
+});
+
+describe("mapPayrollStatus (Issue #230)", () => {
+  it("handles both RPC responses and raw contract status inputs uniformly", () => {
+    const mockRpcResponse = {
+      status: rpc.Api.GetTransactionStatus.SUCCESS,
+      hash: "hash123",
+    } as any;
+
+    const res1 = mapPayrollStatus(mockRpcResponse);
+    expect(res1.status).toBe("confirmed");
+
+    const res2 = mapPayrollStatus("REVERTED");
+    expect(res2.status).toBe("failed");
   });
 });
