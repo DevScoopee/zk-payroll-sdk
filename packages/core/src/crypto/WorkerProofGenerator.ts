@@ -5,6 +5,7 @@ import { IdempotencyRegistry } from "../core/idempotency";
 
 import { PayrollProgressCallback, PayrollProgressEvent, PayrollProgressStage } from "../progress";
 import { validateProofConfig } from "./configValidation";
+import { sanitizeProofInput } from "./proofInputSanitizer";
 
 /**
  * Options for WorkerProofGenerator.
@@ -239,12 +240,24 @@ export class WorkerProofGenerator implements IProofGenerator {
     witness: Record<string, unknown>,
     onProgress?: PayrollProgressCallback
   ): Promise<ProofPayload> {
+    // ── Sanitize witness before dispatching to the worker ─────────────────
+    const sanitizeResult = sanitizeProofInput(witness);
+    if (!sanitizeResult.valid) {
+      const firstError = sanitizeResult.errors[0];
+      return Promise.reject(
+        new ProofGenerationError(firstError.message, firstError.code, {
+          field: firstError.field,
+        })
+      );
+    }
+    const sanitized = sanitizeResult.sanitized!;
+
     const inner = (): Promise<ProofPayload> =>
       this.dispatch(
         {
           type: "GENERATE_PROOF",
           id: this.nextId(),
-          witness,
+          witness: sanitized,
           config: this.config,
         },
         onProgress
@@ -254,7 +267,7 @@ export class WorkerProofGenerator implements IProofGenerator {
       return inner();
     }
 
-    return this.dedup.execute(witnessKey(witness), inner);
+    return this.dedup.execute(witnessKey(sanitized), inner);
   }
 
   /**

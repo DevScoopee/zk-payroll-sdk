@@ -254,6 +254,44 @@ export const ERROR_CODE_REGISTRY: Record<string, ErrorCodeEntry> = {
       "The payroll draft contains invalid data. Please review the errors and try again.",
   },
 
+  // ── Proof Input Sanitization ────────────────────────────────────────────
+  PROOF_INPUT_INVALID_RECIPIENT: {
+    category: ErrorCategory.PROOF,
+    meaning: "Proof witness recipient field is not a valid string.",
+    retryable: false,
+    suggestedMessage: "Recipient must be a string address.",
+  },
+  PROOF_INPUT_INVALID_AMOUNT: {
+    category: ErrorCategory.PROOF,
+    meaning: "Proof witness amount field cannot be parsed as a non-negative integer.",
+    retryable: false,
+    suggestedMessage: "Amount must be a non-negative integer.",
+  },
+  PROOF_INPUT_INVALID_ASSET: {
+    category: ErrorCategory.PROOF,
+    meaning: "Proof witness asset field is not a valid string.",
+    retryable: false,
+    suggestedMessage: "Asset must be a string identifier.",
+  },
+  PROOF_INPUT_FORBIDDEN_FIELD: {
+    category: ErrorCategory.PROOF,
+    meaning: "Proof witness contains a field that is forbidden (e.g. privateKey, secret).",
+    retryable: false,
+    suggestedMessage: "The proof input contains a forbidden sensitive field.",
+  },
+  PROOF_INPUT_MISSING_REQUIRED_FIELD: {
+    category: ErrorCategory.PROOF,
+    meaning: "A required payroll witness field (recipient, amount, or asset) is missing.",
+    retryable: false,
+    suggestedMessage: "A required field is missing from the payroll proof input.",
+  },
+  PROOF_INPUT_INVALID: {
+    category: ErrorCategory.PROOF,
+    meaning: "The proof witness object is null, undefined, or not a plain object.",
+    retryable: false,
+    suggestedMessage: "Proof witness must be a non-null object.",
+  },
+
   // ── Reconciliation ──────────────────────────────────────────────────────
   RECONCILIATION_DIFF_FAILED: {
     category: ErrorCategory.RECONCILIATION,
