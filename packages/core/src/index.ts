@@ -159,6 +159,9 @@ export * from "./audit";
 // ── Webhook Verification ────────────────────────────────────────────────────
 export * from "./webhooks";
 
+// ── Payroll Lifecycle Event Aggregator ──────────────────────────────────────
+export * from "./lifecycle";
+
 // ── Environment Capability Detector ─────────────────────────────────────────
 export * from "./env";
 
