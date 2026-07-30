@@ -77,6 +77,8 @@ export {
 export type { PayrollIdempotencyKeyInput, PaymentIdempotencyKeyInput } from "./core/idempotency";
 export { Semaphore } from "./core/concurrency";
 export * from "./crypto/IProofGenerator";
+export { resolveProofConfig, resolveProofConfigFromEnv } from "./crypto/ProofConfigResolver";
+export type { ProofConfigResolverOptions } from "./crypto/ProofConfigResolver";
 export * from "./adapters";
 
 // ── Wallet Adapters ─────────────────────────────────────────────────────────
@@ -118,6 +120,9 @@ export * from "./clients";
 
 // ── Environment Sanity Checker ──────────────────────────────────────────────
 export * from "./sanity";
+
+// ── Proof Readiness Checker ─────────────────────────────────────────────────
+export * from "./proof-readiness";
 
 // ── Transaction Simulation ──────────────────────────────────────────────────
 export * from "./simulation";
@@ -167,3 +172,9 @@ export * from "./inspector";
 
 // ── Transaction Failure Classification ──────────────────────────────────────
 export * from "./classification";
+
+// Contract State Indexer
+export * from "./indexer";
+
+// Proof Artifact Lifecycle
+export * from "./artifacts";

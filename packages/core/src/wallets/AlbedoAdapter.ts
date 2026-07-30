@@ -209,7 +209,7 @@ export class AlbedoAdapter implements IWalletAdapter {
   }
 
   isAvailable(): boolean {
-    return typeof window !== "undefined" && !!(window as any).Albedo;
+    return typeof window !== "undefined" && !!(window as unknown as Record<string, unknown>).Albedo;
   }
 
   onConnectionChange(callback: (status: WalletConnectionStatus) => void): () => void {
@@ -229,11 +229,12 @@ export class AlbedoAdapter implements IWalletAdapter {
 
   // ── Private helpers ──────────────────────────────────────────────────────
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private getAlbedoApi(): any {
     if (!this.isAvailable()) {
       throw new WalletError("Albedo is not available", WalletErrorCode.NOT_INSTALLED, this.id);
     }
-    return (window as any).Albedo;
+    return (window as unknown as Record<string, unknown>).Albedo;
   }
 
   private setupEventListeners(): void {

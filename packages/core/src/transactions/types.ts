@@ -1,10 +1,5 @@
 export type PayrollTransactionStatus =
-  | "pending"
-| "confirmed"
-  | "failed"
-  | "expired"
-  | "unknown"
-  | "retryable";
+  "pending" | "confirmed" | "failed" | "expired" | "unknown" | "retryable";
 
 export interface NormalizedTransactionStatus {
   /** The normalized business status of the transaction */
@@ -18,5 +13,5 @@ export interface NormalizedTransactionStatus {
   /** The timestamp when the transaction was created, if available */
   createdAt?: number;
   /** Any preserved diagnostic or error metadata */
-  errorDetails?: any;
+  errorDetails?: unknown;
 }

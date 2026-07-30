@@ -458,7 +458,10 @@ describe("Core Error Classes", () => {
     });
 
     it("auto-classifies TRANSACTION_SUBMISSION_FAILED as RETRYABLE", () => {
-      const err = new ContractExecutionError("submission failed", ContractErrorCode.TRANSACTION_SUBMISSION_FAILED);
+      const err = new ContractExecutionError(
+        "submission failed",
+        ContractErrorCode.TRANSACTION_SUBMISSION_FAILED
+      );
       expect(err.failureState).toBe(TimeoutFailureState.RETRYABLE);
     });
 
@@ -468,7 +471,10 @@ describe("Core Error Classes", () => {
     });
 
     it("auto-classifies INVALID_RESPONSE as RETRYABLE", () => {
-      const err = new ContractExecutionError("invalid response", ContractErrorCode.INVALID_RESPONSE);
+      const err = new ContractExecutionError(
+        "invalid response",
+        ContractErrorCode.INVALID_RESPONSE
+      );
       expect(err.failureState).toBe(TimeoutFailureState.RETRYABLE);
     });
 
@@ -482,9 +488,7 @@ describe("Core Error Classes", () => {
 
   describe("ReconciliationErrorCode", () => {
     it("defines DIFF_GENERATION_FAILED", () => {
-      expect(ReconciliationErrorCode.DIFF_GENERATION_FAILED).toBe(
-        "RECONCILIATION_DIFF_FAILED"
-      );
+      expect(ReconciliationErrorCode.DIFF_GENERATION_FAILED).toBe("RECONCILIATION_DIFF_FAILED");
     });
 
     it("defines UNEXPECTED_ACTIVITY", () => {
@@ -545,7 +549,7 @@ describe("Core Error Classes", () => {
     });
 
     it("every entry has required fields", () => {
-      for (const [code, entry] of Object.entries(ERROR_CODE_REGISTRY)) {
+      for (const [, entry] of Object.entries(ERROR_CODE_REGISTRY)) {
         expect(entry.category).toBeDefined();
         expect(entry.meaning).toBeDefined();
         expect(typeof entry.retryable).toBe("boolean");

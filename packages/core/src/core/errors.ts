@@ -307,8 +307,7 @@ export const DEFAULT_ERROR_MESSAGES: Record<string, string> = {
     "Failed to generate reconciliation report. The input data may be inconsistent.",
   [ReconciliationErrorCode.UNEXPECTED_ACTIVITY]:
     "Unexpected on-chain activity was detected. Review the reconciliation report for details.",
-  SERIALIZATION_FAILED:
-    "Failed to serialize or deserialize data. The data may be corrupted.",
+  SERIALIZATION_FAILED: "Failed to serialize or deserialize data. The data may be corrupted.",
   ARTIFACT_NOT_FOUND:
     "A required proving artifact was not found. Please check your artifact URLs and try again.",
   ARTIFACT_ACCESS_DENIED:
@@ -321,6 +320,8 @@ export const DEFAULT_ERROR_MESSAGES: Record<string, string> = {
     "The downloaded proving artifact does not match its expected checksum. The SDK will retry.",
   BATCH_VALIDATION_FAILED:
     "The batch payload contains invalid entries. Please review the validation errors and try again.",
+  EMPLOYEE_BATCH_VALIDATION_FAILED:
+    "The employee batch contains invalid records. Please review the validation errors and try again.",
   DRAFT_VALIDATION_FAILED:
     "The payroll draft contains invalid data. Please review the errors and try again.",
 };
@@ -454,6 +455,7 @@ const CATEGORY_MAP: Record<string, string> = {
   ARTIFACT_FETCH_FAILED: "Artifact",
   ARTIFACT_HASH_MISMATCH: "Artifact",
   BATCH_VALIDATION_FAILED: "Batch",
+  EMPLOYEE_BATCH_VALIDATION_FAILED: "Batch",
   DRAFT_VALIDATION_FAILED: "Draft",
   RECONCILIATION_DIFF_FAILED: "Reconciliation",
   RECONCILIATION_UNEXPECTED_ACTIVITY: "Reconciliation",

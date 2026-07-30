@@ -130,7 +130,8 @@ export const ERROR_CODE_REGISTRY: Record<string, ErrorCodeEntry> = {
   // ── Contract Execution ──────────────────────────────────────────────────
   SIMULATION_FAILED: {
     category: ErrorCategory.CONTRACT,
-    meaning: "The Soroban contract simulation failed before submission — likely invalid inputs or contract bug.",
+    meaning:
+      "The Soroban contract simulation failed before submission — likely invalid inputs or contract bug.",
     retryable: false,
     suggestedMessage:
       "The transaction could not be simulated. Please verify your inputs and network connection and try again.",
@@ -158,7 +159,8 @@ export const ERROR_CODE_REGISTRY: Record<string, ErrorCodeEntry> = {
   },
   CONTRACT_REVERT: {
     category: ErrorCategory.CONTRACT,
-    meaning: "The smart contract logic rejected the transaction — often due to insufficient funds or bad arguments.",
+    meaning:
+      "The smart contract logic rejected the transaction — often due to insufficient funds or bad arguments.",
     retryable: false,
     suggestedMessage:
       "The smart contract rejected the transaction. This may indicate invalid parameters or insufficient permissions.",
@@ -183,8 +185,7 @@ export const ERROR_CODE_REGISTRY: Record<string, ErrorCodeEntry> = {
   // ── Serialization ───────────────────────────────────────────────────────
   SERIALIZATION_FAILED: {
     category: ErrorCategory.SERIALIZATION,
-    meaning:
-      "Binary encoding or decoding of a proof, commitment, or payroll draft failed.",
+    meaning: "Binary encoding or decoding of a proof, commitment, or payroll draft failed.",
     retryable: false,
     suggestedMessage: "Failed to serialize or deserialize data. The data may be corrupted.",
   },
@@ -192,7 +193,8 @@ export const ERROR_CODE_REGISTRY: Record<string, ErrorCodeEntry> = {
   // ── Artifact Errors ─────────────────────────────────────────────────────
   ARTIFACT_NOT_FOUND: {
     category: ErrorCategory.ARTIFACT,
-    meaning: "A required ZK circuit artifact (wasm, zkey) could not be found at the configured path/URL.",
+    meaning:
+      "A required ZK circuit artifact (wasm, zkey) could not be found at the configured path/URL.",
     retryable: true,
     suggestedMessage:
       "A required proving artifact was not found. Please check your artifact URLs and try again.",
@@ -235,6 +237,13 @@ export const ERROR_CODE_REGISTRY: Record<string, ErrorCodeEntry> = {
     suggestedMessage:
       "The batch payload contains invalid entries. Please review the validation errors and try again.",
   },
+  EMPLOYEE_BATCH_VALIDATION_FAILED: {
+    category: ErrorCategory.BATCH,
+    meaning: "Employee batch validation failed — one or more employee records are invalid.",
+    retryable: false,
+    suggestedMessage:
+      "The employee batch contains invalid records. Please review the validation errors and try again.",
+  },
 
   // ── Draft Validation ────────────────────────────────────────────────────
   DRAFT_VALIDATION_FAILED: {
@@ -255,7 +264,8 @@ export const ERROR_CODE_REGISTRY: Record<string, ErrorCodeEntry> = {
   },
   RECONCILIATION_UNEXPECTED_ACTIVITY: {
     category: ErrorCategory.RECONCILIATION,
-    meaning: "On-chain activity was detected with no corresponding expected outcome in the payroll run.",
+    meaning:
+      "On-chain activity was detected with no corresponding expected outcome in the payroll run.",
     retryable: false,
     suggestedMessage:
       "Unexpected on-chain activity was detected. Review the reconciliation report for details.",

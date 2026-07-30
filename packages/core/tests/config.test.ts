@@ -10,6 +10,7 @@ import { ValidationError } from "../src/errors";
 describe("ConfigBuilder, validateConfig, and ConfigPresets", () => {
   const VALID_CONTRACT_ID = "CAKZGMMMJOHMSZ5V3DYKCUDNTIWBG57MAMFJDSVICNWUNVXLX6EZN3NC";
   const VALID_CONTRACT_ID_2 = "CCW67TSB3SSS4ZXGBOI2CCVBW2HJMSEH3EAVXD444YSVG4WWU6UTRM22";
+import { ConfigBuilder, ConfigPresets } from "../src/config";
 
   it("should build a valid config", () => {
     const config = new ConfigBuilder()
@@ -112,8 +113,8 @@ describe("ConfigBuilder, validateConfig, and ConfigPresets", () => {
   it("should fail validation if proofConfig is incomplete", () => {
     const builder = new ConfigBuilder()
       .withNetworkUrl("http://localhost:8000")
-      .withContractId(VALID_CONTRACT_ID)
-      .withProofConfig({ wasmUrl: "http://example.com/circuit.wasm" } as any);
+      .withContractId("CAKZGMMMJOHMSZ5V3DYKCUDNTIWBG57MAMFJDSVICNWUNVXLX6EZN3NC")
+      .withProofConfig({ wasmUrl: "http://example.com/circuit.wasm" } as never);
 
     expect(() => builder.build()).toThrow("proofConfig.zkeyUrl is required.");
   });
