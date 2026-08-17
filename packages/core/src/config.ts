@@ -58,20 +58,27 @@ function isValidContractId(id: string): boolean {
  * @param config - Partial configuration object to validate.
  * @returns ConfigValidationResult containing boolean `isValid` and error details.
  */
-export function validateConfig(config?: Partial<ClientConfig>): ConfigValidationResult {
+export function validateConfig(
+  config?: Partial<ClientConfig>,
+): ConfigValidationResult {
   const errors: ConfigValidationErrorDetail[] = [];
 
   if (!config) {
     return {
       isValid: false,
-      errors: [{ field: "config", message: "Configuration object is required." }],
+      errors: [
+        { field: "config", message: "Configuration object is required." },
+      ],
     };
   }
 
   // 1. Validate RPC URL / networkUrl
   const effectiveUrl = config.rpcUrl || config.networkUrl;
   if (!effectiveUrl || effectiveUrl.trim() === "") {
-    errors.push({ field: "networkUrl", message: "networkUrl (or rpcUrl) is required." });
+    errors.push({
+      field: "networkUrl",
+      message: "networkUrl (or rpcUrl) is required.",
+    });
   } else {
     try {
       const parsedUrl = new URL(effectiveUrl);
@@ -82,25 +89,39 @@ export function validateConfig(config?: Partial<ClientConfig>): ConfigValidation
         });
       }
     } catch {
-      errors.push({ field: "networkUrl", message: `networkUrl is malformed: ${effectiveUrl}` });
+      errors.push({
+        field: "networkUrl",
+        message: `networkUrl is malformed: ${effectiveUrl}`,
+      });
     }
   }
 
   // 2. Validate network name/passphrase if specified
-  if (config.network !== undefined && (typeof config.network !== "string" || config.network.trim() === "")) {
-    errors.push({ field: "network", message: "network must be a non-empty string." });
+  if (
+    config.network !== undefined &&
+    (typeof config.network !== "string" || config.network.trim() === "")
+  ) {
+    errors.push({
+      field: "network",
+      message: "network must be a non-empty string.",
+    });
   }
 
   // 3. Validate contract ID / contract IDs
-  const hasContractId = Boolean(config.contractId && config.contractId.trim() !== "");
+  const hasContractId = Boolean(
+    config.contractId && config.contractId.trim() !== "",
+  );
   const hasContractIds = Boolean(
     config.contractIds &&
-      typeof config.contractIds === "object" &&
-      Object.keys(config.contractIds).length > 0
+    typeof config.contractIds === "object" &&
+    Object.keys(config.contractIds).length > 0,
   );
 
   if (!hasContractId && !hasContractIds) {
-    errors.push({ field: "contractId", message: "contractId (or contractIds) is required." });
+    errors.push({
+      field: "contractId",
+      message: "contractId (or contractIds) is required.",
+    });
   } else {
     if (hasContractId) {
       if (!isValidContractId(config.contractId!)) {
@@ -124,26 +145,57 @@ export function validateConfig(config?: Partial<ClientConfig>): ConfigValidation
 
   // 4. Validate proof artifact locations
   if (config.proofConfig) {
-    if (!config.proofConfig.wasmUrl || config.proofConfig.wasmUrl.trim() === "") {
-      errors.push({ field: "proofConfig.wasmUrl", message: "proofConfig.wasmUrl is required." });
+    if (
+      !config.proofConfig.wasmUrl ||
+      config.proofConfig.wasmUrl.trim() === ""
+    ) {
+      errors.push({
+        field: "proofConfig.wasmUrl",
+        message: "proofConfig.wasmUrl is required.",
+      });
     }
-    if (!config.proofConfig.zkeyUrl || config.proofConfig.zkeyUrl.trim() === "") {
-      errors.push({ field: "proofConfig.zkeyUrl", message: "proofConfig.zkeyUrl is required." });
+    if (
+      !config.proofConfig.zkeyUrl ||
+      config.proofConfig.zkeyUrl.trim() === ""
+    ) {
+      errors.push({
+        field: "proofConfig.zkeyUrl",
+        message: "proofConfig.zkeyUrl is required.",
+      });
     }
   }
 
   // 5. Validate retry policy
   if (config.retryPolicy) {
-    const { maxAttempts, initialDelayMs, maxDelayMs, backoffFactor } = config.retryPolicy;
+    const { maxAttempts, initialDelayMs, maxDelayMs, backoffFactor } =
+      config.retryPolicy;
 
-    if (maxAttempts !== undefined && (typeof maxAttempts !== "number" || maxAttempts < 1)) {
-      errors.push({ field: "retryPolicy.maxAttempts", message: "retryPolicy.maxAttempts must be at least 1." });
+    if (
+      maxAttempts !== undefined &&
+      (typeof maxAttempts !== "number" || maxAttempts < 1)
+    ) {
+      errors.push({
+        field: "retryPolicy.maxAttempts",
+        message: "retryPolicy.maxAttempts must be at least 1.",
+      });
     }
-    if (initialDelayMs !== undefined && (typeof initialDelayMs !== "number" || initialDelayMs < 0)) {
-      errors.push({ field: "retryPolicy.initialDelayMs", message: "retryPolicy.initialDelayMs cannot be negative." });
+    if (
+      initialDelayMs !== undefined &&
+      (typeof initialDelayMs !== "number" || initialDelayMs < 0)
+    ) {
+      errors.push({
+        field: "retryPolicy.initialDelayMs",
+        message: "retryPolicy.initialDelayMs cannot be negative.",
+      });
     }
-    if (maxDelayMs !== undefined && (typeof maxDelayMs !== "number" || maxDelayMs < 0)) {
-      errors.push({ field: "retryPolicy.maxDelayMs", message: "retryPolicy.maxDelayMs cannot be negative." });
+    if (
+      maxDelayMs !== undefined &&
+      (typeof maxDelayMs !== "number" || maxDelayMs < 0)
+    ) {
+      errors.push({
+        field: "retryPolicy.maxDelayMs",
+        message: "retryPolicy.maxDelayMs cannot be negative.",
+      });
     }
     if (
       initialDelayMs !== undefined &&
@@ -152,18 +204,31 @@ export function validateConfig(config?: Partial<ClientConfig>): ConfigValidation
     ) {
       errors.push({
         field: "retryPolicy.maxDelayMs",
-        message: "retryPolicy.maxDelayMs must be greater than or equal to initialDelayMs.",
+        message:
+          "retryPolicy.maxDelayMs must be greater than or equal to initialDelayMs.",
       });
     }
-    if (backoffFactor !== undefined && (typeof backoffFactor !== "number" || backoffFactor < 1)) {
-      errors.push({ field: "retryPolicy.backoffFactor", message: "retryPolicy.backoffFactor must be at least 1." });
+    if (
+      backoffFactor !== undefined &&
+      (typeof backoffFactor !== "number" || backoffFactor < 1)
+    ) {
+      errors.push({
+        field: "retryPolicy.backoffFactor",
+        message: "retryPolicy.backoffFactor must be at least 1.",
+      });
     }
   }
 
   // 6. Validate feature flags
   if (config.featureFlags !== undefined) {
-    if (typeof config.featureFlags !== "object" || config.featureFlags === null) {
-      errors.push({ field: "featureFlags", message: "featureFlags must be an object." });
+    if (
+      typeof config.featureFlags !== "object" ||
+      config.featureFlags === null
+    ) {
+      errors.push({
+        field: "featureFlags",
+        message: "featureFlags must be an object.",
+      });
     } else {
       for (const [flag, val] of Object.entries(config.featureFlags)) {
         if (typeof val !== "boolean") {
@@ -189,7 +254,9 @@ export function validateConfig(config?: Partial<ClientConfig>): ConfigValidation
  * @param config - Partial configuration object.
  * @throws {ValidationError} If validation fails.
  */
-export function assertValidConfig(config?: Partial<ClientConfig>): ClientConfig {
+export function assertValidConfig(
+  config?: Partial<ClientConfig>,
+): ClientConfig {
   const result = validateConfig(config);
   if (!result.isValid) {
     const errorMessages = result.errors.map((e) => `- ${e.message}`).join("\n");
@@ -198,7 +265,7 @@ export function assertValidConfig(config?: Partial<ClientConfig>): ClientConfig 
       `Configuration validation failed:\n${errorMessages}`,
       firstField,
       "CONFIG_VALIDATION_ERROR",
-      { errors: result.errors }
+      { errors: result.errors },
     );
   }
 
@@ -207,7 +274,9 @@ export function assertValidConfig(config?: Partial<ClientConfig>): ClientConfig 
     networkUrl: effectiveUrl,
     rpcUrl: config!.rpcUrl || effectiveUrl,
     network: config!.network,
-    contractId: config!.contractId || (config!.contractIds ? Object.values(config!.contractIds)[0] : ""),
+    contractId:
+      config!.contractId ||
+      (config!.contractIds ? Object.values(config!.contractIds)[0] : ""),
     contractIds: config!.contractIds,
     adminKey: config!.adminKey,
     proofConfig: config!.proofConfig,
