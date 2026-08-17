@@ -8,9 +8,11 @@ import {
 import { ValidationError } from "../src/errors";
 
 describe("ConfigBuilder, validateConfig, and ConfigPresets", () => {
-  const VALID_CONTRACT_ID = "CAKZGMMMJOHMSZ5V3DYKCUDNTIWBG57MAMFJDSVICNWUNVXLX6EZN3NC";
-  const VALID_CONTRACT_ID_2 = "CCW67TSB3SSS4ZXGBOI2CCVBW2HJMSEH3EAVXD444YSVG4WWU6UTRM22";
-import { ConfigBuilder, ConfigPresets } from "../src/config";
+  const VALID_CONTRACT_ID =
+    "CAKZGMMMJOHMSZ5V3DYKCUDNTIWBG57MAMFJDSVICNWUNVXLX6EZN3NC";
+  const VALID_CONTRACT_ID_2 =
+    "CCW67TSB3SSS4ZXGBOI2CCVBW2HJMSEH3EAVXD444YSVG4WWU6UTRM22";
+  import { ConfigBuilder, ConfigPresets } from "../src/config";
 
   it("should build a valid config", () => {
     const config = new ConfigBuilder()
@@ -51,7 +53,9 @@ import { ConfigBuilder, ConfigPresets } from "../src/config";
     const builder = new ConfigBuilder().withContractId(VALID_CONTRACT_ID);
 
     expect(() => builder.build()).toThrow(ValidationError);
-    expect(() => builder.build()).toThrow("networkUrl (or rpcUrl) is required.");
+    expect(() => builder.build()).toThrow(
+      "networkUrl (or rpcUrl) is required.",
+    );
   });
 
   it("should fail validation if networkUrl is malformed", () => {
@@ -69,7 +73,9 @@ import { ConfigBuilder, ConfigPresets } from "../src/config";
     });
 
     expect(result.isValid).toBe(false);
-    expect(result.errors[0].message).toContain("must use http, https, ws, or wss protocol");
+    expect(result.errors[0].message).toContain(
+      "must use http, https, ws, or wss protocol",
+    );
   });
 
   it("should fail validation if network is invalid", () => {
@@ -86,7 +92,9 @@ import { ConfigBuilder, ConfigPresets } from "../src/config";
   it("should fail validation if contractId is missing", () => {
     const builder = new ConfigBuilder().withNetworkUrl("http://localhost:8000");
 
-    expect(() => builder.build()).toThrow("contractId (or contractIds) is required.");
+    expect(() => builder.build()).toThrow(
+      "contractId (or contractIds) is required.",
+    );
   });
 
   it("should fail validation if contractId is malformed", () => {
@@ -107,13 +115,17 @@ import { ConfigBuilder, ConfigPresets } from "../src/config";
     });
 
     expect(result.isValid).toBe(false);
-    expect(result.errors.some((e) => e.field === "contractIds.token")).toBe(true);
+    expect(result.errors.some((e) => e.field === "contractIds.token")).toBe(
+      true,
+    );
   });
 
   it("should fail validation if proofConfig is incomplete", () => {
     const builder = new ConfigBuilder()
       .withNetworkUrl("http://localhost:8000")
-      .withContractId("CAKZGMMMJOHMSZ5V3DYKCUDNTIWBG57MAMFJDSVICNWUNVXLX6EZN3NC")
+      .withContractId(
+        "CAKZGMMMJOHMSZ5V3DYKCUDNTIWBG57MAMFJDSVICNWUNVXLX6EZN3NC",
+      )
       .withProofConfig({ wasmUrl: "http://example.com/circuit.wasm" } as never);
 
     expect(() => builder.build()).toThrow("proofConfig.zkeyUrl is required.");
@@ -185,7 +197,9 @@ import { ConfigBuilder, ConfigPresets } from "../src/config";
       });
 
       expect(result.isValid).toBe(false);
-      expect(result.errors.some((e) => e.field === "featureFlags.enableIdempotency")).toBe(true);
+      expect(
+        result.errors.some((e) => e.field === "featureFlags.enableIdempotency"),
+      ).toBe(true);
     });
   });
 
@@ -242,7 +256,9 @@ import { ConfigBuilder, ConfigPresets } from "../src/config";
         .withContractId(VALID_CONTRACT_ID)
         .withRetryPolicy({ maxAttempts: 0 });
 
-      expect(() => builder.build()).toThrow("retryPolicy.maxAttempts must be at least 1.");
+      expect(() => builder.build()).toThrow(
+        "retryPolicy.maxAttempts must be at least 1.",
+      );
     });
 
     it("should fail validation if maxDelayMs is less than initialDelayMs", () => {
@@ -256,7 +272,9 @@ import { ConfigBuilder, ConfigPresets } from "../src/config";
       });
 
       expect(result.isValid).toBe(false);
-      expect(result.errors.some((e) => e.field === "retryPolicy.maxDelayMs")).toBe(true);
+      expect(
+        result.errors.some((e) => e.field === "retryPolicy.maxDelayMs"),
+      ).toBe(true);
     });
 
     it("should fail validation if backoffFactor is less than 1", () => {
@@ -269,8 +287,9 @@ import { ConfigBuilder, ConfigPresets } from "../src/config";
       });
 
       expect(result.isValid).toBe(false);
-      expect(result.errors.some((e) => e.field === "retryPolicy.backoffFactor")).toBe(true);
+      expect(
+        result.errors.some((e) => e.field === "retryPolicy.backoffFactor"),
+      ).toBe(true);
     });
   });
 });
-
