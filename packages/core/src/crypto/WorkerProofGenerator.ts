@@ -5,7 +5,7 @@ import {
   witnessKey,
 } from "./IProofGenerator";
 import type { WorkerRequest, WorkerResponse } from "./WorkerMessages";
-import { PayrollError } from "../errors";
+import { PayrollError, ProofGenerationError } from "../errors";
 import { IdempotencyRegistry } from "../core/idempotency";
 
 import {

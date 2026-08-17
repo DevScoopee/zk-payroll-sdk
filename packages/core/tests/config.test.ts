@@ -12,8 +12,6 @@ describe("ConfigBuilder, validateConfig, and ConfigPresets", () => {
     "CAKZGMMMJOHMSZ5V3DYKCUDNTIWBG57MAMFJDSVICNWUNVXLX6EZN3NC";
   const VALID_CONTRACT_ID_2 =
     "CCW67TSB3SSS4ZXGBOI2CCVBW2HJMSEH3EAVXD444YSVG4WWU6UTRM22";
-  import { ConfigBuilder, ConfigPresets } from "../src/config";
-
   it("should build a valid config", () => {
     const config = new ConfigBuilder()
       .withNetworkUrl("https://soroban-testnet.stellar.org")
