@@ -1,7 +1,13 @@
 export { PayrollService } from "../payroll";
 export type { Transaction, FilterCriteria } from "../payroll";
 export { PayrollContract } from "../contract";
-export { DEFAULT_CONFIG, ConfigPresets, ConfigBuilder, validateConfig, assertValidConfig } from "../config";
+export {
+  DEFAULT_CONFIG,
+  ConfigPresets,
+  ConfigBuilder,
+  validateConfig,
+  assertValidConfig,
+} from "../config";
 export type {
   ClientConfig,
   RetryPolicyConfig,
