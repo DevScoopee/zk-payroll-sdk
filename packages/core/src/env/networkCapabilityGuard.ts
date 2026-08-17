@@ -43,13 +43,20 @@ export class NetworkCapabilityGuard {
    */
   public canSign(): CapabilityCheckResult {
     if (this.disabled.has(NetworkCapability.SIGNING)) {
-      return { supported: false, capability: NetworkCapability.SIGNING, reason: "Signing is explicitly disabled" };
+      return {
+        supported: false,
+        capability: NetworkCapability.SIGNING,
+        reason: "Signing is explicitly disabled",
+      };
     }
-    const supported = this.env.hasWalletSupport || this.env.environment === "node";
+    const supported =
+      this.env.hasWalletSupport || this.env.environment === "node";
     return {
       supported,
       capability: NetworkCapability.SIGNING,
-      reason: supported ? undefined : "Signing requires browser wallet support or Node.js environment",
+      reason: supported
+        ? undefined
+        : "Signing requires browser wallet support or Node.js environment",
     };
   }
 
@@ -58,13 +65,20 @@ export class NetworkCapabilityGuard {
    */
   public canFetch(): CapabilityCheckResult {
     if (this.disabled.has(NetworkCapability.FETCHING)) {
-      return { supported: false, capability: NetworkCapability.FETCHING, reason: "Fetching is explicitly disabled" };
+      return {
+        supported: false,
+        capability: NetworkCapability.FETCHING,
+        reason: "Fetching is explicitly disabled",
+      };
     }
-    const supported = this.env.capabilities.has("fetch") || this.env.environment === "node";
+    const supported =
+      this.env.capabilities.has("fetch") || this.env.environment === "node";
     return {
       supported,
       capability: NetworkCapability.FETCHING,
-      reason: supported ? undefined : "Fetching is not supported in this runtime environment",
+      reason: supported
+        ? undefined
+        : "Fetching is not supported in this runtime environment",
     };
   }
 
@@ -73,13 +87,19 @@ export class NetworkCapabilityGuard {
    */
   public canPoll(): CapabilityCheckResult {
     if (this.disabled.has(NetworkCapability.POLLING)) {
-      return { supported: false, capability: NetworkCapability.POLLING, reason: "Polling is explicitly disabled" };
+      return {
+        supported: false,
+        capability: NetworkCapability.POLLING,
+        reason: "Polling is explicitly disabled",
+      };
     }
     const supported = this.env.capabilities.has("rpc_call");
     return {
       supported,
       capability: NetworkCapability.POLLING,
-      reason: supported ? undefined : "Polling requires rpc_call capability in the current environment",
+      reason: supported
+        ? undefined
+        : "Polling requires rpc_call capability in the current environment",
     };
   }
 
@@ -88,13 +108,19 @@ export class NetworkCapabilityGuard {
    */
   public canGenerateProof(): CapabilityCheckResult {
     if (this.disabled.has(NetworkCapability.PROOF_GENERATION)) {
-      return { supported: false, capability: NetworkCapability.PROOF_GENERATION, reason: "Proof generation is explicitly disabled" };
+      return {
+        supported: false,
+        capability: NetworkCapability.PROOF_GENERATION,
+        reason: "Proof generation is explicitly disabled",
+      };
     }
     const supported = this.env.capabilities.has("proof_generation");
     return {
       supported,
       capability: NetworkCapability.PROOF_GENERATION,
-      reason: supported ? undefined : "Proof generation requires WebAssembly and Crypto API capabilities",
+      reason: supported
+        ? undefined
+        : "Proof generation requires WebAssembly and Crypto API capabilities",
     };
   }
 
@@ -117,13 +143,16 @@ export class NetworkCapabilityGuard {
         result = this.canGenerateProof();
         break;
       default:
-        throw new PayrollError(`Unknown network capability: ${capability}`, "INVALID_CAPABILITY" as any);
+        throw new PayrollError(
+          `Unknown network capability: ${capability}`,
+          "INVALID_CAPABILITY" as any,
+        );
     }
 
     if (!result.supported) {
       throw new PayrollError(
         `Network capability '${capability}' is not supported in this environment: ${result.reason}`,
-        "UNSUPPORTED_ENVIRONMENT" as any
+        "UNSUPPORTED_ENVIRONMENT" as any,
       );
     }
   }
