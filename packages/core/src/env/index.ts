@@ -1,5 +1,8 @@
 export { detectEnvironment, canRunOperation, listOperations } from "./detector";
-export { NetworkCapabilityGuard, NetworkCapability } from "./networkCapabilityGuard";
+export {
+  NetworkCapabilityGuard,
+  NetworkCapability,
+} from "./networkCapabilityGuard";
 export type {
   NetworkCapabilitiesOptions,
   CapabilityCheckResult,
@@ -10,4 +13,3 @@ export type {
   EnvironmentCapabilities,
   SdkOperationCapability,
 } from "./types";
-
