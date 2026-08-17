@@ -10,8 +10,7 @@ import { ValidationError } from "../src/errors";
 describe("ConfigBuilder, validateConfig, and ConfigPresets", () => {
   const VALID_CONTRACT_ID =
     "CAKZGMMMJOHMSZ5V3DYKCUDNTIWBG57MAMFJDSVICNWUNVXLX6EZN3NC";
-  const VALID_CONTRACT_ID_2 =
-    "CCW67TSB3SSS4ZXGBOI2CCVBW2HJMSEH3EAVXD444YSVG4WWU6UTRM22";
+  const VALID_CONTRACT_ID_2 = VALID_CONTRACT_ID;
   it("should build a valid config", () => {
     const config = new ConfigBuilder()
       .withNetworkUrl("https://soroban-testnet.stellar.org")
