@@ -185,3 +185,7 @@ export * from "./artifacts";
 // ── Payroll Receipts & Verification ─────────────────────────────────────────
 export * from "./receipts";
 export * from "./verification";
+
+// ── Employee Eligibility & Reason Codes ─────────────────────────────────────
+export * from "./eligibility";
+export * from "./employees";
