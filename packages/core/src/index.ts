@@ -156,6 +156,9 @@ export * from "./reconciliation";
 // ── Audit View-Key Helpers ──────────────────────────────────────────────────
 export * from "./audit";
 
+// ── Audit-Safe Debug Snapshot ───────────────────────────────────────────────
+export * from "./debug";
+
 // ── Webhook Verification ────────────────────────────────────────────────────
 export * from "./webhooks";
 

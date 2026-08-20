@@ -467,6 +467,26 @@ Each `DiagnosticEntry` contains:
 - `error?: Error` - The caught error object, if any.
 - `details?: Record<string, unknown>` - Extra context (e.g. network passphrases or RPC response details).
 
+## Audit-Safe Debug Snapshot
+
+To troubleshoot issues without exposing private payroll data, capture an
+audit-safe snapshot of SDK configuration and runtime state:
+
+```typescript
+import { createDebugSnapshot } from "@zk-payroll/sdk";
+
+const { snapshot, redactedFieldCount, redactedKeys } = await createDebugSnapshot({
+  config: client.getConfig(),
+  state: { pendingPayments, draft, signerSecret: signer.secret() },
+});
+
+console.log(`Redacted ${redactedFieldCount} fields: ${redactedKeys.join(", ")}`);
+console.log(JSON.stringify(snapshot)); // safe to attach to a support ticket
+```
+
+The snapshot is always JSON-serializable (BigInt, dates, cycles handled),
+redacts sensitive payroll fields recursively, and carries an integrity hash
+verifiable via `verifyDebugSnapshot`. See the [Audit-Safe Debug Snapshot guide](docs/DEBUG_SNAPSHOT.md).
 ## Network Request Timing
 
 To diagnose slow RPC or API paths, wrap your `rpc.Server` with `createTimedRpcServer` and read back the timing metadata — without changing any existing response behavior:
