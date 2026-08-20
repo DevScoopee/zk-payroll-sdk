@@ -187,5 +187,14 @@ export * from "./artifacts";
 
 // Payroll Setup Checklist Generator
 export * from "./setup";
+
 // Network Request Timing Metadata
 export * from "./network";
+
+// ── Payroll Receipts & Verification ─────────────────────────────────────────
+export * from "./receipts";
+export { ReceiptVerificationCode as VerificationCode } from "./receipts";
+
+// ── Employee Eligibility & Reason Codes ─────────────────────────────────────
+export * from "./eligibility";
+export * from "./employees";
