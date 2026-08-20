@@ -606,6 +606,74 @@ carry the canonical precision the contract expects.
 See the [Multi-Asset Guide](./docs/MULTI_ASSET.md) for the full API reference, isolation
 patterns for tests, and rules for extending the registry in production.
 
+## Employee Eligibility & Reason Codes
+
+The SDK includes a comprehensive, typed employee eligibility evaluation engine to inspect employee records before payroll resolution. It returns typed, machine-readable reason codes that make it easy for dashboards and backends to explain blocked recipients without exposing private payroll amounts.
+
+```typescript
+import {
+  evaluateEmployeeEligibility,
+  evaluateBatchEligibility,
+  filterEligibleEmployees,
+  formatEligibilityReport,
+  EligibilityReasonCode,
+  EmployeeRegistry,
+} from "@zk-payroll/sdk";
+
+// Single employee evaluation
+const result = evaluateEmployeeEligibility({
+  employeeId: "EMP-001",
+  recipient: "GA...",
+  salary: 5000000000n,
+  asset: "native",
+  status: "suspended",
+});
+
+if (!result.isEligible) {
+  console.log(result.primaryReasonCode); // "EMPLOYEE_SUSPENDED"
+  console.log(result.reasons[0].action); // "Resolve the administrative suspension prior to releasing payroll disbursements."
+}
+
+// Batch evaluation with privacy-safe diagnostic summary for dashboards
+const batch = evaluateBatchEligibility([
+  { employeeId: "EMP-001", recipient: "GA...", salary: 5000000000n, asset: "native" },
+  { employeeId: "EMP-002", recipient: "", salary: 2000000000n, asset: "native" },
+]);
+
+const report = formatEligibilityReport(batch);
+// All salaries and secrets remain redacted in logs/telemetry:
+console.log(report.reasonSummary); // { MISSING_RECIPIENT_ADDRESS: 1 }
+```
+
+### Typed Reason Codes Catalog
+
+| Reason Code | Category | Description | Suggested Remediation |
+| :--- | :--- | :--- | :--- |
+| `MISSING_RECIPIENT_ADDRESS` | Identity | Destination Stellar address is missing or empty | Provide a valid Stellar G... address |
+| `INVALID_RECIPIENT_ADDRESS` | Identity | Address format is malformed or invalid | Correct public key address format |
+| `MISSING_EMPLOYEE_ID` | Identity | Employee record identifier is missing | Assign a unique employee ID |
+| `DUPLICATE_EMPLOYEE_ID` | Identity | Duplicate employee ID within payroll batch | Deduplicate employee records in batch |
+| `DUPLICATE_RECIPIENT_ADDRESS` | Identity | Duplicate destination address within batch | Ensure unique recipient per payout batch |
+| `INACTIVE_EMPLOYEE_STATUS` | Status | Account is flagged as inactive | Activate employee in HR/payroll system |
+| `EMPLOYEE_SUSPENDED` | Status | Account is currently suspended | Resolve administrative suspension |
+| `EMPLOYEE_TERMINATED` | Status | Employee is terminated / offboarded | Settle through severance workflows |
+| `EFFECTIVE_DATE_FUTURE` | Status | Employment start date is in the future | Schedule payout for on/after effective date |
+| `EFFECTIVE_DATE_EXPIRED` | Status | Contract period ended before payroll cycle | Renew contract or adjust cycle bounds |
+| `ZERO_OR_NEGATIVE_SALARY` | Compensation | Payout amount is zero or negative | Set positive non-zero payout amount |
+| `SALARY_EXCEEDS_MAX_LIMIT` | Compensation | Salary exceeds configured maximum ceiling | Split transaction or request limit elevation |
+| `SALARY_BELOW_MIN_LIMIT` | Compensation | Salary is below minimum payout threshold | Combine into next cycle or verify amount |
+| `MISSING_ASSET_IDENTIFIER` | Compensation | Asset identifier is missing | Specify token address or "native" |
+| `UNSUPPORTED_ASSET` | Compensation | Asset is not permitted in configuration | Use an approved asset token |
+| `COMPLIANCE_BLOCKED` | Compliance | Failed KYC/AML verification or policy hold | Complete identity verification |
+| `PAYROLL_LOCKED` | Compliance | Administrative or security hold active | Release lock in dashboard |
+| `SANCTION_LISTED` | Compliance | Recipient matches prohibited sanctions list | Escalate to compliance/legal team |
+| `REGISTRY_RECORD_NOT_FOUND` | Registry | No on-chain registry record found | Register employee with contract first |
+| `REGISTRY_RECORD_DEACTIVATED`| Registry | On-chain registry record is deactivated | Reactivate registry entry on-chain |
+| `REGISTRY_SALARY_MISMATCH` | Registry | Resolution salary differs from on-chain | Update registry salary on-chain |
+| `REGISTRY_TOKEN_MISMATCH` | Registry | Payment token differs from on-chain token | Use registered token contract |
+| `CUSTOM_INELIGIBILITY_RULE` | Custom | Custom user-defined eligibility rule failed | Review custom business policy criteria |
+
+
 ## Documentation
 
 - [Terminology Guide](./docs/terminology.md) - Canonical names for concepts shared across contracts, SDK, and dashboard

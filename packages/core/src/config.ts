@@ -58,17 +58,13 @@ function isValidContractId(id: string): boolean {
  * @param config - Partial configuration object to validate.
  * @returns ConfigValidationResult containing boolean `isValid` and error details.
  */
-export function validateConfig(
-  config?: Partial<ClientConfig>,
-): ConfigValidationResult {
+export function validateConfig(config?: Partial<ClientConfig>): ConfigValidationResult {
   const errors: ConfigValidationErrorDetail[] = [];
 
   if (!config) {
     return {
       isValid: false,
-      errors: [
-        { field: "config", message: "Configuration object is required." },
-      ],
+      errors: [{ field: "config", message: "Configuration object is required." }],
     };
   }
 
@@ -108,13 +104,11 @@ export function validateConfig(
   }
 
   // 3. Validate contract ID / contract IDs
-  const hasContractId = Boolean(
-    config.contractId && config.contractId.trim() !== "",
-  );
+  const hasContractId = Boolean(config.contractId && config.contractId.trim() !== "");
   const hasContractIds = Boolean(
     config.contractIds &&
     typeof config.contractIds === "object" &&
-    Object.keys(config.contractIds).length > 0,
+    Object.keys(config.contractIds).length > 0
   );
 
   if (!hasContractId && !hasContractIds) {
@@ -145,19 +139,13 @@ export function validateConfig(
 
   // 4. Validate proof artifact locations
   if (config.proofConfig) {
-    if (
-      !config.proofConfig.wasmUrl ||
-      config.proofConfig.wasmUrl.trim() === ""
-    ) {
+    if (!config.proofConfig.wasmUrl || config.proofConfig.wasmUrl.trim() === "") {
       errors.push({
         field: "proofConfig.wasmUrl",
         message: "proofConfig.wasmUrl is required.",
       });
     }
-    if (
-      !config.proofConfig.zkeyUrl ||
-      config.proofConfig.zkeyUrl.trim() === ""
-    ) {
+    if (!config.proofConfig.zkeyUrl || config.proofConfig.zkeyUrl.trim() === "") {
       errors.push({
         field: "proofConfig.zkeyUrl",
         message: "proofConfig.zkeyUrl is required.",
@@ -167,13 +155,9 @@ export function validateConfig(
 
   // 5. Validate retry policy
   if (config.retryPolicy) {
-    const { maxAttempts, initialDelayMs, maxDelayMs, backoffFactor } =
-      config.retryPolicy;
+    const { maxAttempts, initialDelayMs, maxDelayMs, backoffFactor } = config.retryPolicy;
 
-    if (
-      maxAttempts !== undefined &&
-      (typeof maxAttempts !== "number" || maxAttempts < 1)
-    ) {
+    if (maxAttempts !== undefined && (typeof maxAttempts !== "number" || maxAttempts < 1)) {
       errors.push({
         field: "retryPolicy.maxAttempts",
         message: "retryPolicy.maxAttempts must be at least 1.",
@@ -188,30 +172,19 @@ export function validateConfig(
         message: "retryPolicy.initialDelayMs cannot be negative.",
       });
     }
-    if (
-      maxDelayMs !== undefined &&
-      (typeof maxDelayMs !== "number" || maxDelayMs < 0)
-    ) {
+    if (maxDelayMs !== undefined && (typeof maxDelayMs !== "number" || maxDelayMs < 0)) {
       errors.push({
         field: "retryPolicy.maxDelayMs",
         message: "retryPolicy.maxDelayMs cannot be negative.",
       });
     }
-    if (
-      initialDelayMs !== undefined &&
-      maxDelayMs !== undefined &&
-      maxDelayMs < initialDelayMs
-    ) {
+    if (initialDelayMs !== undefined && maxDelayMs !== undefined && maxDelayMs < initialDelayMs) {
       errors.push({
         field: "retryPolicy.maxDelayMs",
-        message:
-          "retryPolicy.maxDelayMs must be greater than or equal to initialDelayMs.",
+        message: "retryPolicy.maxDelayMs must be greater than or equal to initialDelayMs.",
       });
     }
-    if (
-      backoffFactor !== undefined &&
-      (typeof backoffFactor !== "number" || backoffFactor < 1)
-    ) {
+    if (backoffFactor !== undefined && (typeof backoffFactor !== "number" || backoffFactor < 1)) {
       errors.push({
         field: "retryPolicy.backoffFactor",
         message: "retryPolicy.backoffFactor must be at least 1.",
@@ -221,10 +194,7 @@ export function validateConfig(
 
   // 6. Validate feature flags
   if (config.featureFlags !== undefined) {
-    if (
-      typeof config.featureFlags !== "object" ||
-      config.featureFlags === null
-    ) {
+    if (typeof config.featureFlags !== "object" || config.featureFlags === null) {
       errors.push({
         field: "featureFlags",
         message: "featureFlags must be an object.",
@@ -254,9 +224,7 @@ export function validateConfig(
  * @param config - Partial configuration object.
  * @throws {ValidationError} If validation fails.
  */
-export function assertValidConfig(
-  config?: Partial<ClientConfig>,
-): ClientConfig {
+export function assertValidConfig(config?: Partial<ClientConfig>): ClientConfig {
   const result = validateConfig(config);
   if (!result.isValid) {
     const errorMessages = result.errors.map((e) => `- ${e.message}`).join("\n");
@@ -265,7 +233,7 @@ export function assertValidConfig(
       `Configuration validation failed:\n${errorMessages}`,
       firstField,
       "CONFIG_VALIDATION_ERROR",
-      { errors: result.errors },
+      { errors: result.errors }
     );
   }
 
@@ -275,8 +243,7 @@ export function assertValidConfig(
     rpcUrl: config!.rpcUrl || effectiveUrl,
     network: config!.network,
     contractId:
-      config!.contractId ||
-      (config!.contractIds ? Object.values(config!.contractIds)[0] : ""),
+      config!.contractId || (config!.contractIds ? Object.values(config!.contractIds)[0] : ""),
     contractIds: config!.contractIds,
     adminKey: config!.adminKey,
     proofConfig: config!.proofConfig,
