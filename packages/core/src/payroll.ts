@@ -10,6 +10,17 @@ import { redactError } from "./redaction/RedactionEngine";
 import { IdempotencyRegistry, createPaymentIdempotencyKey } from "./core/idempotency";
 import { createPayrollProgressEvent } from "./progress";
 import { assertValidPayrollWitness } from "./crypto/proofInputSanitizer";
+import {
+  createPayrollReceipt,
+  verifyPayrollReceipt,
+  assertValidPayrollReceipt,
+} from "./receipts/receiptVerifier";
+import type {
+  PayrollReceipt,
+  ReceiptVerificationOptions,
+  ReceiptVerificationResult,
+  CreatePayrollReceiptParams,
+} from "./receipts/types";
 
 export interface Transaction {
   amount: bigint;
@@ -233,5 +244,77 @@ export class PayrollService {
 
       throw new PayrollError(firstError.message, code);
     }
+  }
+
+  /**
+   * Generates a verifiable PayrollReceipt record for a completed payment.
+   * Sensitive values remain safely formatted or redacted.
+   */
+  createReceipt(
+    params: PaymentParams,
+    result: PaymentResult,
+    payrollId: string = `pr_${Date.now()}`,
+    overrides: Partial<CreatePayrollReceiptParams> = {}
+  ): PayrollReceipt {
+    return createPayrollReceipt({
+      payrollId,
+      settlementStatus: "settled",
+      transactionReference: {
+        txHash: result.txHash,
+        network: this.network,
+        confirmedAt: Date.now(),
+      },
+      totalAmount: params.amount,
+      currency: params.asset,
+      recipientCount: 1,
+      metadata: {
+        recipient: params.recipient,
+        asset: params.asset,
+        idempotencyKey: params.idempotencyKey,
+      },
+      ...overrides,
+    });
+  }
+
+  /**
+   * Verifies a payroll receipt against defined integrity, settlement,
+   * transaction reference, and metadata digest constraints.
+   */
+  verifyReceipt(
+    receipt: PayrollReceipt | unknown,
+    options?: ReceiptVerificationOptions
+  ): ReceiptVerificationResult {
+    return verifyPayrollReceipt(receipt, options);
+  }
+
+  /**
+   * Asserts that a payroll receipt is valid, throwing `PayrollReceiptVerificationError`
+   * if verification fails.
+   */
+  assertValidReceipt(
+    receipt: PayrollReceipt | unknown,
+    options?: ReceiptVerificationOptions
+  ): PayrollReceipt {
+    return assertValidPayrollReceipt(receipt, options);
+  }
+
+  /**
+   * Static helper: verifies a payroll receipt.
+   */
+  static verifyReceipt(
+    receipt: PayrollReceipt | unknown,
+    options?: ReceiptVerificationOptions
+  ): ReceiptVerificationResult {
+    return verifyPayrollReceipt(receipt, options);
+  }
+
+  /**
+   * Static helper: asserts validity of a payroll receipt.
+   */
+  static assertValidReceipt(
+    receipt: PayrollReceipt | unknown,
+    options?: ReceiptVerificationOptions
+  ): PayrollReceipt {
+    return assertValidPayrollReceipt(receipt, options);
   }
 }

@@ -181,3 +181,7 @@ export * from "./indexer";
 
 // Proof Artifact Lifecycle
 export * from "./artifacts";
+
+// ── Payroll Receipts & Verification ─────────────────────────────────────────
+export * from "./receipts";
+export * from "./verification";
