@@ -156,6 +156,9 @@ export * from "./reconciliation";
 // ── Audit View-Key Helpers ──────────────────────────────────────────────────
 export * from "./audit";
 
+// ── Audit-Safe Debug Snapshot ───────────────────────────────────────────────
+export * from "./debug";
+
 // ── Webhook Verification ────────────────────────────────────────────────────
 export * from "./webhooks";
 
@@ -185,3 +188,7 @@ export * from "./artifacts";
 // ── Payroll Receipts & Verification ─────────────────────────────────────────
 export * from "./receipts";
 export * from "./verification";
+// Payroll Setup Checklist Generator
+export * from "./setup";
+// Network Request Timing Metadata
+export * from "./network";

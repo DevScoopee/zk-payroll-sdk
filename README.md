@@ -93,6 +93,7 @@ await service.processPayment({
 - **Caching**: Built-in caching for proofs and circuit artifacts.
 - **Error Handling**: Robust error typing and management.
 - **Mock Testing Environment**: Comprehensive testing utilities for unit tests without a live network.
+- **Setup Checklist Generator**: Generates a pre-payroll integration checklist covering config, network, contracts, treasury, proofs, wallet, and test fixtures.
 
 ## Browser and Backend Usage
 
@@ -466,6 +467,77 @@ Each `DiagnosticEntry` contains:
 - `message: string` - Actionable diagnostic message explaining the result.
 - `error?: Error` - The caught error object, if any.
 - `details?: Record<string, unknown>` - Extra context (e.g. network passphrases or RPC response details).
+
+## Payroll Setup Checklist
+
+Before running payroll, use `generateSetupChecklist` to generate an integration checklist covering **config, network, contracts, treasury, proofs, wallet, and test fixtures**:
+
+```typescript
+import { generateSetupChecklist } from "@zk-payroll/sdk";
+
+const checklist = generateSetupChecklist(config, {
+  expectedNetworkPassphrase: "Test SDF Network ; September 2015",
+  rpcReachable: true,             // result of validateEnvironment(config)
+  networkPassphrase: "Test SDF Network ; September 2015",
+  contractDeployed: true,         // result of validateEnvironment(config)
+  treasury: { treasuryAddress: "G...", funded: true },
+  wallet: { name: "Freighter", isAvailable: true, isConnected: true, network: "testnet" },
+  testFixturesAvailable: true,
+});
+
+if (!checklist.isReady) {
+  for (const blocker of checklist.blockers) {
+    console.error(`[${blocker.category}] ${blocker.message} → ${blocker.remediation}`);
+  }
+}
+```
+
+Each check returns `pass`, `warn`, or `fail` with an actionable `remediation`.
+See the [Setup Checklist Guide](docs/SETUP_CHECKLIST.md) for full details.
+## Audit-Safe Debug Snapshot
+
+To troubleshoot issues without exposing private payroll data, capture an
+audit-safe snapshot of SDK configuration and runtime state:
+
+```typescript
+import { createDebugSnapshot } from "@zk-payroll/sdk";
+
+const { snapshot, redactedFieldCount, redactedKeys } = await createDebugSnapshot({
+  config: client.getConfig(),
+  state: { pendingPayments, draft, signerSecret: signer.secret() },
+});
+
+console.log(`Redacted ${redactedFieldCount} fields: ${redactedKeys.join(", ")}`);
+console.log(JSON.stringify(snapshot)); // safe to attach to a support ticket
+```
+
+The snapshot is always JSON-serializable (BigInt, dates, cycles handled),
+redacts sensitive payroll fields recursively, and carries an integrity hash
+verifiable via `verifyDebugSnapshot`. See the [Audit-Safe Debug Snapshot guide](docs/DEBUG_SNAPSHOT.md).
+## Network Request Timing
+
+To diagnose slow RPC or API paths, wrap your `rpc.Server` with `createTimedRpcServer` and read back the timing metadata — without changing any existing response behavior:
+
+```typescript
+import { rpc } from "@stellar/stellar-sdk";
+import { createTimedRpcServer } from "@zk-payroll/sdk";
+
+const server = createTimedRpcServer(new rpc.Server(rpcUrl));
+// Pass `server` to the SDK wherever it accepts an rpc.Server.
+
+// Existing behavior is unchanged.
+// ... run payroll operations ...
+
+const stats = server.getNetworkTimingStats();
+if (stats.byOperation.simulateTransaction?.avgDurationMs > 1500) {
+  console.warn("simulateTransaction is slow; consider a closer RPC endpoint");
+}
+```
+
+HTTP(S) artifact fetches can be timed per-request with `timeAxiosRequest` or
+globally (opt-in) with `installAxiosTiming`. Timing metadata is attached to
+responses as a non-enumerable symbol and never includes payloads or private
+payroll values. See the [Network Request Timing guide](docs/NETWORK_REQUEST_TIMING.md).
 
 ## Multi-Asset Support
 
