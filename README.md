@@ -467,6 +467,31 @@ Each `DiagnosticEntry` contains:
 - `error?: Error` - The caught error object, if any.
 - `details?: Record<string, unknown>` - Extra context (e.g. network passphrases or RPC response details).
 
+## Network Request Timing
+
+To diagnose slow RPC or API paths, wrap your `rpc.Server` with `createTimedRpcServer` and read back the timing metadata — without changing any existing response behavior:
+
+```typescript
+import { rpc } from "@stellar/stellar-sdk";
+import { createTimedRpcServer } from "@zk-payroll/sdk";
+
+const server = createTimedRpcServer(new rpc.Server(rpcUrl));
+// Pass `server` to the SDK wherever it accepts an rpc.Server.
+
+// Existing behavior is unchanged.
+// ... run payroll operations ...
+
+const stats = server.getNetworkTimingStats();
+if (stats.byOperation.simulateTransaction?.avgDurationMs > 1500) {
+  console.warn("simulateTransaction is slow; consider a closer RPC endpoint");
+}
+```
+
+HTTP(S) artifact fetches can be timed per-request with `timeAxiosRequest` or
+globally (opt-in) with `installAxiosTiming`. Timing metadata is attached to
+responses as a non-enumerable symbol and never includes payloads or private
+payroll values. See the [Network Request Timing guide](docs/NETWORK_REQUEST_TIMING.md).
+
 ## Multi-Asset Support
 
 The SDK provides a centralised `AssetRegistry` that maps asset identifiers to labels,
