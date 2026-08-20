@@ -185,6 +185,9 @@ export * from "./indexer";
 // Proof Artifact Lifecycle
 export * from "./artifacts";
 
+// ── Payroll Receipts & Verification ─────────────────────────────────────────
+export * from "./receipts";
+export * from "./verification";
 // Payroll Setup Checklist Generator
 export * from "./setup";
 
