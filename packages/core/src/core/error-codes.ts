@@ -17,6 +17,7 @@ export const ErrorCategory = {
   SIMULATION: "simulation",
   IDEMPOTENCY: "idempotency",
   RECEIPT: "receipt",
+  ELIGIBILITY: "eligibility",
 } as const;
 
 export type ErrorCategoryType = (typeof ErrorCategory)[keyof typeof ErrorCategory];
@@ -356,6 +357,24 @@ export const ERROR_CODE_REGISTRY: Record<string, ErrorCodeEntry> = {
     meaning: "The receipt age exceeds the allowable freshness time limit.",
     retryable: false,
     suggestedMessage: "The payroll receipt has expired and can no longer be verified.",
+  },
+
+  // ── Employee Eligibility ────────────────────────────────────────────────
+  INELIGIBLE_EMPLOYEE_RECORD: {
+    category: ErrorCategory.ELIGIBILITY,
+    meaning:
+      "Employee record is ineligible for payroll resolution due to failing one or more validation/eligibility rules.",
+    retryable: false,
+    suggestedMessage:
+      "The employee record is ineligible for payroll resolution. Please check the eligibility reason codes.",
+  },
+  BATCH_ELIGIBILITY_FAILED: {
+    category: ErrorCategory.ELIGIBILITY,
+    meaning:
+      "One or more employee records in the batch failed eligibility checks during strict batch processing.",
+    retryable: false,
+    suggestedMessage:
+      "The payroll batch contains ineligible employee records. Please resolve the blocked recipients.",
   },
 };
 
