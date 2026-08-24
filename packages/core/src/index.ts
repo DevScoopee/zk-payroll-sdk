@@ -159,6 +159,15 @@ export * from "./audit";
 // ── Audit-Safe Debug Snapshot ───────────────────────────────────────────────
 export * from "./debug";
 
+// ── Privacy Utilities ───────────────────────────────────────────────────────
+export * from "./privacy";
+
+// ── Capability Management ───────────────────────────────────────────────────
+export * from "./capabilities";
+
+// ── Contract Upgrade Analysis ───────────────────────────────────────────────
+export * from "./upgrades";
+
 // ── Webhook Verification ────────────────────────────────────────────────────
 export * from "./webhooks";
 
