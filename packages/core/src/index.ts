@@ -185,6 +185,9 @@ export * from "./indexer";
 // Proof Artifact Lifecycle
 export * from "./artifacts";
 
+// Multi-Signer Authorization
+export * from "./authorization";
+
 // ── Payroll Receipts & Verification ─────────────────────────────────────────
 export * from "./receipts";
 export * from "./verification";
