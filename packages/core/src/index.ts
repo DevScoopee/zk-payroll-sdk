@@ -52,19 +52,23 @@ export type {
   ErrorCategoryType,
   ErrorCodeEntry,
 } from "./errors";
-export {
-  DEFAULT_CONFIG,
-  ConfigPresets,
-  ConfigBuilder,
-  validateConfig,
-  assertValidConfig,
-} from "./config";
 export type {
   ClientConfig,
   RetryPolicyConfig,
   FeatureFlagsConfig,
   ConfigValidationErrorDetail,
   ConfigValidationResult,
+  ConfigMigrationWarning,
+  ConfigMigrationResult,
+} from "./config";
+export {
+  DEFAULT_CONFIG,
+  ConfigPresets,
+  ConfigBuilder,
+  validateConfig,
+  assertValidConfig,
+  migrateConfig,
+  detectDeprecatedConfigFields,
 } from "./config";
 export * from "./cache";
 export * from "./types";
