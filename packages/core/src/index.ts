@@ -52,19 +52,23 @@ export type {
   ErrorCategoryType,
   ErrorCodeEntry,
 } from "./errors";
-export {
-  DEFAULT_CONFIG,
-  ConfigPresets,
-  ConfigBuilder,
-  validateConfig,
-  assertValidConfig,
-} from "./config";
 export type {
   ClientConfig,
   RetryPolicyConfig,
   FeatureFlagsConfig,
   ConfigValidationErrorDetail,
   ConfigValidationResult,
+  ConfigMigrationWarning,
+  ConfigMigrationResult,
+} from "./config";
+export {
+  DEFAULT_CONFIG,
+  ConfigPresets,
+  ConfigBuilder,
+  validateConfig,
+  assertValidConfig,
+  migrateConfig,
+  detectDeprecatedConfigFields,
 } from "./config";
 export * from "./cache";
 export * from "./types";
@@ -156,6 +160,18 @@ export * from "./reconciliation";
 // ── Audit View-Key Helpers ──────────────────────────────────────────────────
 export * from "./audit";
 
+// ── Audit-Safe Debug Snapshot ───────────────────────────────────────────────
+export * from "./debug";
+
+// ── Privacy Utilities ───────────────────────────────────────────────────────
+export * from "./privacy";
+
+// ── Capability Management ───────────────────────────────────────────────────
+export * from "./capabilities";
+
+// ── Contract Upgrade Analysis ───────────────────────────────────────────────
+export * from "./upgrades";
+
 // ── Webhook Verification ────────────────────────────────────────────────────
 export * from "./webhooks";
 
@@ -181,3 +197,23 @@ export * from "./indexer";
 
 // Proof Artifact Lifecycle
 export * from "./artifacts";
+
+// Multi-Signer Authorization
+export * from "./authorization";
+
+// ── Payroll Receipts & Verification ─────────────────────────────────────────
+export * from "./receipts";
+export * from "./verification";
+// Payroll Setup Checklist Generator
+export * from "./setup";
+
+// Network Request Timing Metadata
+export * from "./network";
+
+// ── Payroll Receipts & Verification ─────────────────────────────────────────
+export * from "./receipts";
+export { ReceiptVerificationCode as VerificationCode } from "./receipts";
+
+// ── Employee Eligibility & Reason Codes ─────────────────────────────────────
+export * from "./eligibility";
+export * from "./employees";
